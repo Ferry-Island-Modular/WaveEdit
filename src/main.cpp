@@ -25,9 +25,6 @@ void fixWorkingDirectory() {
 
 	// Switch to the directory of the actual binary
 	chdir(dirname(path));
-	// This will fail silently if there is no ../Resources directory.
-	// Super hacky, but it allows the binary to be run from an app bundle or from the command line.
-	chdir("../Resources");
 
 	char cwd[PATH_MAX];
 	getcwd(cwd, sizeof(cwd));

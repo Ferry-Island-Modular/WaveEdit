@@ -6,8 +6,13 @@ ifneq (,$(findstring linux,$(MACHINE)))
 	# Linux
 	ARCH = lin
 else ifneq (,$(findstring apple,$(MACHINE)))
-	# Mac
-	ARCH = mac
+	# Mac - detect ARM64 vs x86_64
+	CPU = $(shell uname -m)
+	ifeq ($(CPU),arm64)
+		ARCH = mac_arm64
+	else
+		ARCH = mac
+	endif
 else ifneq (,$(findstring mingw,$(MACHINE)))
 	# Windows
 	ARCH = win

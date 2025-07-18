@@ -1,8 +1,17 @@
 VERSION = 1.1
 
-FLAGS = -Wall -Wextra -Wno-unused-parameter -g -Wno-unused -O3 -march=nocona -ffast-math \
+FLAGS = -Wall -Wextra -Wno-unused-parameter -g -Wno-unused -O3 -ffast-math \
 	-DVERSION=$(VERSION) -DPFFFT_SIMD_DISABLE \
 	-I. -Iext -Iext/imgui -Idep/include -Idep/include/SDL2
+
+# Architecture-specific optimizations
+ifeq ($(ARCH),mac_arm64)
+	FLAGS += -march=native
+else ifeq ($(ARCH),mac)
+	FLAGS += -march=nocona
+else ifneq (,$(filter $(ARCH),lin win))
+	FLAGS += -march=nocona
+endif
 CFLAGS =
 CXXFLAGS = -std=c++11
 LDFLAGS =
@@ -28,16 +37,22 @@ ifeq ($(ARCH),lin)
 		-Ldep/lib -lSDL2 -lsamplerate -lsndfile \
 		-lgtk-x11-2.0 -lgobject-2.0
 	SOURCES += ext/osdialog/osdialog_gtk2.c
-else ifeq ($(ARCH),mac)
-	# Mac
+else ifneq (,$(filter $(ARCH),mac mac_arm64))
+	# Mac (Intel or Apple Silicon)
 	FLAGS += -DARCH_MAC \
-		-mmacosx-version-min=10.7
+		-mmacosx-version-min=11.0 \
+		-I$(shell brew --prefix)/include -I$(shell brew --prefix)/include/SDL2
 	CXXFLAGS += -stdlib=libc++
-	LDFLAGS += -mmacosx-version-min=10.7 \
+	LDFLAGS += -mmacosx-version-min=11.0 \
 		-stdlib=libc++ -lpthread \
 		-framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo \
-		-Ldep/lib -lSDL2 -lsamplerate -lsndfile
+		$(shell brew --prefix)/lib/libSDL2-2.0.0.dylib \
+		$(shell brew --prefix)/lib/libsamplerate.0.dylib \
+		$(shell brew --prefix)/lib/libsndfile.1.dylib
 	SOURCES += ext/osdialog/osdialog_mac.m
+ifeq ($(ARCH),mac_arm64)
+	FLAGS += -DARCH_ARM64
+endif
 else ifeq ($(ARCH),win)
 	# Windows
 	FLAGS += -DARCH_WIN
@@ -55,10 +70,14 @@ endif
 build: WaveEdit
 
 run: WaveEdit
+ifneq (,$(filter $(ARCH),mac mac_arm64))
+	cd "$(shell pwd)" && ./WaveEdit
+else
 	LD_LIBRARY_PATH=dep/lib ./WaveEdit
+endif
 
 debug: WaveEdit
-ifeq ($(ARCH),mac)
+ifneq (,$(filter $(ARCH),mac mac_arm64))
 	lldb ./WaveEdit
 else
 	gdb -ex 'run' ./WaveEdit
@@ -87,7 +106,7 @@ ifeq ($(ARCH),lin)
 	cp dep/lib/libSDL2-2.0.so.0 dist/WaveEdit
 	cp dep/lib/libsamplerate.so.0 dist/WaveEdit
 	cp dep/lib/libsndfile.so.1 dist/WaveEdit
-else ifeq ($(ARCH),mac)
+else ifneq (,$(filter $(ARCH),mac mac_arm64))
 	mkdir -p dist/WaveEdit/WaveEdit.app/Contents/MacOS
 	mkdir -p dist/WaveEdit/WaveEdit.app/Contents/Resources
 	cp Info.plist dist/WaveEdit/WaveEdit.app/Contents
@@ -95,12 +114,12 @@ else ifeq ($(ARCH),mac)
 	cp -R logo*.png logo.icns fonts catalog dist/WaveEdit/WaveEdit.app/Contents/Resources
 	# Remap dylibs in executable
 	otool -L dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
-	cp dep/lib/libSDL2-2.0.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
-	install_name_tool -change $(PWD)/dep/lib/libSDL2-2.0.0.dylib @executable_path/libSDL2-2.0.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
-	cp dep/lib/libsamplerate.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
-	install_name_tool -change $(PWD)/dep/lib/libsamplerate.0.dylib @executable_path/libsamplerate.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
-	cp dep/lib/libsndfile.1.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
-	install_name_tool -change $(PWD)/dep/lib/libsndfile.1.dylib @executable_path/libsndfile.1.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
+	cp $(shell brew --prefix)/lib/libSDL2-2.0.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
+	install_name_tool -change $(shell brew --prefix)/lib/libSDL2-2.0.0.dylib @executable_path/libSDL2-2.0.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
+	cp $(shell brew --prefix)/lib/libsamplerate.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
+	install_name_tool -change $(shell brew --prefix)/lib/libsamplerate.0.dylib @executable_path/libsamplerate.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
+	cp $(shell brew --prefix)/lib/libsndfile.1.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
+	install_name_tool -change $(shell brew --prefix)/lib/libsndfile.1.dylib @executable_path/libsndfile.1.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
 	otool -L dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
 else ifeq ($(ARCH),win)
 	cp -R logo*.png fonts catalog dist/WaveEdit
