@@ -26,6 +26,14 @@ void fixWorkingDirectory() {
 	// Switch to the directory of the actual binary
 	chdir(dirname(path));
 
+	// Check if we're in an app bundle by looking for ../Resources/fonts
+	// This ensures we only switch to Resources if it's actually an app bundle with our fonts
+	if (access("../Resources/fonts", F_OK) == 0) {
+		// We're in an app bundle, change to Resources directory
+		chdir("../Resources");
+	}
+	// Otherwise stay in the binary directory (for command line execution)
+
 	char cwd[PATH_MAX];
 	getcwd(cwd, sizeof(cwd));
 	printf("Working directory is %s\n", cwd);

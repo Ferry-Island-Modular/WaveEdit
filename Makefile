@@ -46,9 +46,9 @@ else ifneq (,$(filter $(ARCH),mac mac_arm64))
 	LDFLAGS += -mmacosx-version-min=11.0 \
 		-stdlib=libc++ -lpthread \
 		-framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo \
-		$(shell brew --prefix)/lib/libSDL2-2.0.0.dylib \
-		$(shell brew --prefix)/lib/libsamplerate.0.dylib \
-		$(shell brew --prefix)/lib/libsndfile.1.dylib
+		$(shell brew --prefix sdl2)/lib/libSDL2-2.0.0.dylib \
+		$(shell brew --prefix libsamplerate)/lib/libsamplerate.0.dylib \
+		$(shell brew --prefix libsndfile)/lib/libsndfile.1.dylib
 	SOURCES += ext/osdialog/osdialog_mac.m
 ifeq ($(ARCH),mac_arm64)
 	FLAGS += -DARCH_ARM64
@@ -114,12 +114,12 @@ else ifneq (,$(filter $(ARCH),mac mac_arm64))
 	cp -R logo*.png logo.icns fonts catalog dist/WaveEdit/WaveEdit.app/Contents/Resources
 	# Remap dylibs in executable
 	otool -L dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
-	cp $(shell brew --prefix)/lib/libSDL2-2.0.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
-	install_name_tool -change $(shell brew --prefix)/lib/libSDL2-2.0.0.dylib @executable_path/libSDL2-2.0.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
-	cp $(shell brew --prefix)/lib/libsamplerate.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
-	install_name_tool -change $(shell brew --prefix)/lib/libsamplerate.0.dylib @executable_path/libsamplerate.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
-	cp $(shell brew --prefix)/lib/libsndfile.1.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
-	install_name_tool -change $(shell brew --prefix)/lib/libsndfile.1.dylib @executable_path/libsndfile.1.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
+	cp $(shell brew --prefix sdl2)/lib/libSDL2-2.0.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
+	install_name_tool -change $(shell brew --prefix sdl2)/lib/libSDL2-2.0.0.dylib @executable_path/libSDL2-2.0.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
+	cp $(shell brew --prefix libsamplerate)/lib/libsamplerate.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
+	install_name_tool -change $(shell brew --prefix libsamplerate)/lib/libsamplerate.0.dylib @executable_path/libsamplerate.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
+	cp $(shell brew --prefix libsndfile)/lib/libsndfile.1.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
+	install_name_tool -change $(shell brew --prefix libsndfile)/lib/libsndfile.1.dylib @executable_path/libsndfile.1.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
 	otool -L dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
 else ifeq ($(ARCH),win)
 	cp -R logo*.png fonts catalog dist/WaveEdit
