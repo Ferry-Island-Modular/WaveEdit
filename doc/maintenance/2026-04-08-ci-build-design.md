@@ -1,10 +1,17 @@
 # CI / Cross-Platform Build Design
 
 **Date:** 2026-04-08
-**Status:** Design (approved by user, pending file-level review)
+**Status:** Design (approved by user, implementation plan next)
 **Sub-project of:** WaveEdit maintained-fork stewardship
 **Predecessor:** `2026-04-08-fork-research.md`
-**Depends on:** Submodule sourcing audit & upgrade sub-project (must complete first, so CI runs against a known-good modernized submodule baseline rather than 2017-era unmaintained Belt forks)
+**Depends on:** ~~Submodule sourcing audit & upgrade sub-project~~ — **satisfied** as of 2026-04-09 (see `2026-04-09-submodule-upgrade-plan.md` and commits `bf5da97`..`34d9ce2` on `m1-modernization`). Modern `ocornut/imgui` v1.92.7, canonical `jpommier/pffft`, current `lvandeve/lodepng` are all in place. `ext/osdialog` pin was deliberately held for the future Linux zenity sub-project; this does not block CI because the Linux job will still compile the current `osdialog_gtk2.c` which is present in the stale pin.
+
+**Implementation notes discovered during the submodule upgrade** (2026-04-09) that affect CI:
+
+1. The Makefile now passes `-DIMGUI_USER_CONFIG=\"src/imconfig_user.h\"` to enable 32-bit draw indices. No CI impact — `make` reads the Makefile.
+2. `ext/imgui` added four source files (`imgui_tables.cpp`, `imgui_widgets.cpp`, `backends/imgui_impl_sdl2.cpp`, `backends/imgui_impl_opengl2.cpp`). Build time per fresh run is slightly higher; dep cache still works unchanged.
+3. `ext/pffft` now clones from `bitbucket.org/jpommier/pffft.git` instead of GitHub. CI runners can fetch Bitbucket over HTTPS without any special setup — it works identically to GitHub for `git submodule update --init --recursive`. Worth a note in the workflow file comments for future readers.
+4. Linux build against the current `ext/osdialog` pin (`e66caf0`, which still has `osdialog_gtk2.c`) will need `libgtk2.0-dev` in the apt install step as the CI design already specifies. When the zenity sub-project lands, that apt line changes to install `zenity` instead of GTK dev headers, and the Linux Makefile entry swaps `osdialog_gtk2.c` for `osdialog_zenity.c`.
 
 ## Goal
 
