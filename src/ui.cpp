@@ -28,6 +28,7 @@ static ImTextureID logoTextureDark;
 static ImTextureID logoTexture;
 char lastFilename[1024] = "";
 static int styleId = 0;
+ImFont* fontMono = NULL;
 int selectedId = 0;
 int lastSelectedId = 0;
 
@@ -1061,8 +1062,14 @@ void uiInit() {
 	ImGui::GetIO().IniFilename = NULL;
 	styleId = 3;
 
-	// Load fonts
-	ImGui::GetIO().Fonts->AddFontFromFileTTF("fonts/Lekton-Regular.ttf", 15.0);
+	// Load fonts. UI font is Inter (default), monospace numerics are
+	// JetBrains Mono. Both rendered via FreeType (see imconfig_user.h).
+	ImGuiIO &io = ImGui::GetIO();
+	io.Fonts->Clear();
+	io.FontDefault = io.Fonts->AddFontFromFileTTF("fonts/Inter-Regular.ttf", 14.0f);
+	fontMono = io.Fonts->AddFontFromFileTTF("fonts/JetBrainsMono-Regular.ttf", 14.0f);
+	IM_ASSERT(io.FontDefault != NULL && "fonts/Inter-Regular.ttf failed to load");
+	IM_ASSERT(fontMono != NULL && "fonts/JetBrainsMono-Regular.ttf failed to load");
 	logoTextureLight = loadImage("logo-light.png");
 	logoTextureDark = loadImage("logo-dark.png");
 

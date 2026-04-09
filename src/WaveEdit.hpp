@@ -291,6 +291,12 @@ float renderBankWave(const char *name, float height, const float *lines, int lin
 // ui.cpp
 ////////////////////
 
+// Global font pointers loaded by ui.cpp:uiInit() so other translation units
+// (import.cpp, etc.) can wrap their numeric readouts in
+// ImGui::PushFont(fontMono) / ImGui::PopFont() for tabular figures.
+struct ImFont;
+extern ImFont* fontMono;
+
 void renderWaveMenu();
 void uiInit();
 void uiDestroy();
