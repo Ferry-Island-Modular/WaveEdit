@@ -24,7 +24,7 @@ Explicitly deferred to future improvement items:
 - **Bold/italic font variants.** Single Regular weight per family in v1.
 - **Glassy main window** (`SDL_WINDOW_TRANSPARENT` + transparent OpenGL context). Separate sub-project. Complex enough to deserve its own design pass.
 - **User-adjustable transparency intensity slider.** Hardcoded alpha defaults in v1. Settings UI is a future improvement.
-- **Removing the old Lekton fonts** from `fonts/`. Keep as dead weight in v1; clean up in a follow-up once nothing references them.
+- **Split-label/value typography for sliders.** v1 wraps each whole `SliderFloat` call in `PushFont(fontMono)`, which renders both the label and the value in monospace. The "gold-standard" audio-software approach is to refactor each slider into a `Text(label)` + `SliderFloat("value-only-format")` pair so the label stays in proportional Inter and only the value goes mono. Defer to a future polish pass.
 
 ## Decisions made during brainstorming
 
@@ -39,6 +39,10 @@ Explicitly deferred to future improvement items:
 | Logo swapping | **Auto** — derived from base16 luminance of `base00` | Zero per-theme metadata; existing logo files reused |
 | Hot-reload | **Instant** | Free with imgui's immediate-mode rendering |
 | Code structure | **Approach B** — separate `src/theme.hpp` + `src/theme.cpp` module | `ui.cpp` is already too large; clean module boundary; natural home for future theme work |
+| Built-in themes | **8 schemes** — Tokyo Night (default), Darcula, Dracula, Nord, Gruvbox Dark, One Dark, Catppuccin Frappé, Solarized Light | Cover the most popular dark schemes plus one light counterpoint plus the maintainer's daily-driver |
+| Default theme | **Tokyo Night** | Show off the most distinctive end of the new theme system on first launch — make the upgrade feel like a real change, not a quiet rename |
+| `fontMono` application | **Wrap every `SliderFloat` call in `PushFont(fontMono)/PopFont`** in v1 | Maintainer wants the full effect, not half-measures. Simple mechanical wrap; deferred polish (split label/value typography) is its own follow-up |
+| Lekton fonts | **Removed in v1** | Maintainer: "kill it with fire." Inter replaces all UI text |
 
 ## Architecture
 
@@ -121,20 +125,19 @@ src/
   main.cpp          (modified: one themeInit() call after CreateContext)
   imconfig_user.h   (modified: add #define IMGUI_ENABLE_FREETYPE)
 themes/             (new directory; shipped in app bundle)
+  tokyo-night.yaml
   darcula.yaml
   dracula.yaml
   nord.yaml
-  tokyo-night.yaml
   gruvbox-dark-medium.yaml
   one-dark.yaml
+  catppuccin-frappe.yaml
   solarized-light.yaml
 fonts/
   Inter-Regular.ttf            (new; ~310 KB)
   JetBrainsMono-Regular.ttf    (new; ~190 KB)
-  Lekton-Regular.ttf           (kept for now; removed in follow-up)
-  Lekton-Bold.ttf              (kept for now; removed in follow-up)
-  Lekton-Italic.ttf            (kept for now; removed in follow-up)
-  SIL Open Font License.txt    (extended to cover Inter and JBM)
+  SIL Open Font License.txt    (rewritten to cover Inter and JBM only)
+  (Lekton-*.ttf removed in v1)
 Makefile            (modified: add ext/imgui/misc/freetype/imgui_freetype.cpp
                      to SOURCES, add freetype include + link flags per arch,
                      add libfreetype dylib bundling to mac dist target)
@@ -331,21 +334,30 @@ fontMono = io.Fonts->AddFontFromFileTTF(
     "fonts/JetBrainsMono-Regular.ttf", 14.0f);
 ```
 
-`fontMono` is a global `ImFont*` declared `extern` in `WaveEdit.hpp`. **v1 ships with `fontMono` loaded and ready but does not yet apply it to any specific call sites.** Applying it (wrapping slider readouts in `ImGui::PushFont(fontMono); ImGui::Text("%.2f", value); ImGui::PopFont();`) is a deliberate follow-up polish step, deferred to its own future-improvements item. Reasons for deferring: it touches every numeric readout in `ui.cpp` and `import.cpp` (~20 sites), each one a judgment call about whether tabular numerics actually look better in that context, and this sub-project is already big enough.
+`fontMono` is a global `ImFont*` declared `extern` in `WaveEdit.hpp`. **v1 applies `fontMono` to every `ImGui::SliderFloat` call site in `ui.cpp` and `import.cpp`** by wrapping each call in `ImGui::PushFont(fontMono); ... ImGui::PopFont();`. The format strings on these sliders contain the visible text (label + value), so wrapping the whole call renders both in the monospace font — the result is a consistent "all slider readouts are tabular" look across the app.
+
+Affected call sites (15 total, all `SliderFloat`):
+- `src/ui.cpp` — playVolume, playFrequency, MorphX/Y/Z, MorphZSpeed, effects sliders, average slider, amplitude/scale, angle (~10 sites)
+- `src/import.cpp` — gain, offset, zoom, leftTrim, rightTrim (~5 sites)
+
+Other text rendering (menu items, page tab labels, button text, text rendered via `ImGui::Text` with non-numeric content) keeps the default Inter font. The rule is mechanical: **if the call is `ImGui::SliderFloat`, wrap it in `PushFont(fontMono)/PopFont()`. Everything else stays in Inter.**
+
+A future polish pass (deferred) could refactor each `SliderFloat` into a `Text(label) + SliderFloat(value-only-format)` pair so the label renders in proportional Inter and only the value renders in mono — that's the gold-standard audio-software typography. Out of scope for v1; the simple wrap is enough to "see the magic."
 
 **Font sizes loaded:** one (14px). Single weight per family. ~4 MB total font atlas texture.
 
 ## Built-in themes shipped in `themes/`
 
-Seven curated base16 schemes vendored from [github.com/tinted-theming/base16-schemes](https://github.com/tinted-theming/base16-schemes), all redistributable under permissive licenses:
+Eight curated base16 schemes vendored from [github.com/tinted-theming/base16-schemes](https://github.com/tinted-theming/base16-schemes), all redistributable under permissive licenses:
 
-1. **darcula.yaml** — JetBrains Darcula. **Default on first launch.**
-2. **dracula.yaml** — Dracula. Slightly more saturated than Darcula.
-3. **nord.yaml** — Nord. Cool blue/gray, very popular.
-4. **tokyo-night.yaml** — Tokyo Night. Modern, slightly more colorful.
+1. **tokyo-night.yaml** — Tokyo Night. Modern, slightly more colorful. **Default on first launch** (chosen to show off the most distinctive end of the new theme system rather than the most-conservative-looking).
+2. **darcula.yaml** — JetBrains Darcula. The classic dark IDE look.
+3. **dracula.yaml** — Dracula. Slightly more saturated than Darcula.
+4. **nord.yaml** — Nord. Cool blue/gray, very popular.
 5. **gruvbox-dark-medium.yaml** — Gruvbox Dark. Warm earth tones.
 6. **one-dark.yaml** — Atom's One Dark.
-7. **solarized-light.yaml** — Solarized Light, the benchmark light theme.
+7. **catppuccin-frappe.yaml** — Catppuccin Frappé. Maintainer's daily-driver aesthetic (also what they use in Zed).
+8. **solarized-light.yaml** — Solarized Light, the benchmark light theme.
 
 Adding more is a drag-and-drop operation: download any `.yaml` from the tinted-theming repo, copy to `themes/`, restart WaveEdit.
 
@@ -355,12 +367,12 @@ Old format (4 bytes total): `[ int styleId ]`
 New format (5+ bytes): `[ uint32_t version=2 ][ uint8_t nameLen ][ char name[nameLen] ]`
 
 Read logic on startup:
-- File missing or 0 bytes → use default theme name `"darcula"`
-- File exactly 4 bytes long → old format, discard the value, use `"darcula"`
+- File missing or 0 bytes → use default theme name `"tokyo-night"`
+- File exactly 4 bytes long → old format, discard the value, use `"tokyo-night"`
 - File ≥ 5 bytes and starts with `version == 2` → new format, parse the name
-- Anything else → fall back to `"darcula"`
+- Anything else → fall back to `"tokyo-night"`
 
-Resolution: pass the loaded name to `themeByName()`. If it returns -1, fall back to `themeByName("darcula")`. If that also returns -1, use id 0.
+Resolution: pass the loaded name to `themeByName()`. If it returns -1, fall back to `themeByName("tokyo-night")`. If that also returns -1, use id 0.
 
 Write logic on shutdown: write `version=2`, length-prefixed current theme name. ~25 lines of read+write code total.
 
@@ -412,7 +424,7 @@ The CI design spec already accounts for libgtk2.0-dev on Linux and SDL2/libsampl
 | Empty `themes/` directory | Same as above. |
 | Single `.yaml` file is malformed | Log warning with filename and parser line. Skip that file. Continue loading others. |
 | All theme files malformed | Same as missing directory — fall back to built-in default. |
-| Theme name in `ui.dat` doesn't match | Fall back to `"darcula"`, then to id 0. |
+| Theme name in `ui.dat` doesn't match | Fall back to `"tokyo-night"`, then to id 0. |
 | FreeType atlas build fails (font file missing/corrupt) | imgui's `AddFontFromFileTTF` returns NULL. We assert in debug, fall back to imgui's built-in `ProggyClean` font in release. App stays usable. |
 | libfreetype not installed at runtime | Hard link error at startup. App won't launch. Documented in README as a runtime dependency. |
 | User drops a non-base16 YAML in `themes/` (e.g., a Zed theme) | Parse fails (missing `base00..base0F` keys). Logged warning, file skipped. No crash. |
@@ -437,7 +449,6 @@ Cross-platform verification (Linux/Windows) is deferred to the CI sub-project �
 
 - The exact code in each function (that's the implementation plan's job).
 - The final mapping table values — the table in this spec is a first-pass mapping, expected to be tweaked during interactive validation.
-- What happens to the legacy Lekton fonts (kept in v1, cleaned up later).
 - Anything about the in-app theme editor (Tier 1 future improvement).
 
 ## Risks
