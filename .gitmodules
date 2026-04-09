@@ -6,7 +6,7 @@
 	url = https://github.com/AndrewBelt/imgui.git
 [submodule "ext/pffft"]
 	path = ext/pffft
-	url = https://github.com/marton78/pffft.git
+	url = https://bitbucket.org/jpommier/pffft.git
 [submodule "ext/osdialog"]
 	path = ext/osdialog
 	url = https://github.com/AndrewBelt/osdialog.git
