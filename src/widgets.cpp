@@ -463,6 +463,15 @@ void renderWaterfall(const char *name, float height, float amplitude, float angl
 	ImRect box = ImRect(window->DC.CursorPos, window->DC.CursorPos + size);
 	ImRect inner = ImRect(box.Min + style.FramePadding, box.Max - style.FramePadding);
 
+	// Register the widget with imgui's item system. Required for
+	// ItemHoverable() below to work in modern imgui (v1.87+). The old
+	// imgui used to allow ad-hoc IsHovered(box, id) without a prior
+	// ItemAdd, but the modern API unified the two and requires the
+	// item to exist in the frame's item tree.
+	ImGui::ItemSize(box, style.FramePadding.y);
+	if (!ImGui::ItemAdd(box, id))
+		return;
+
 	ImGui::PushClipRect(box.Min, box.Max, true);
 
 	// Behavior
