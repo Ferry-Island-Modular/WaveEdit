@@ -425,21 +425,18 @@ void renderMenu() {
 			}
 			ImGui::EndMenu();
 		}
-		// View
-		if (ImGui::BeginMenu("View")) {
-			if (ImGui::BeginMenu("Theme")) {
-				for (int i = 0; i < themeCount(); i++) {
-					bool selected = (currentThemeId == i);
-					ImGui::PushID(i);
-					if (ImGui::MenuItem(themeName(i), NULL, selected)) {
-						currentThemeId = i;
-						bool isDark = true;
-						themeApply(currentThemeId, &isDark);
-						logoTexture = isDark ? logoTextureLight : logoTextureDark;
-					}
-					ImGui::PopID();
+		// Theme
+		if (ImGui::BeginMenu("Theme")) {
+			for (int i = 0; i < themeCount(); i++) {
+				ImGui::PushID(i);
+				bool selected = (currentThemeId == i);
+				if (ImGui::MenuItem(themeName(i), NULL, selected)) {
+					currentThemeId = i;
+					bool isDark = true;
+					themeApply(currentThemeId, &isDark);
+					logoTexture = isDark ? logoTextureLight : logoTextureDark;
 				}
-				ImGui::EndMenu();
+				ImGui::PopID();
 			}
 			ImGui::EndMenu();
 		}
@@ -461,10 +458,14 @@ void renderPreview() {
 	ImGui::Checkbox("Play", &playEnabled);
 	ImGui::SameLine();
 	ImGui::PushItemWidth(300.0);
+	ImGui::PushFont(fontMono);
 	ImGui::SliderFloat("##playVolume", &playVolume, -60.0f, 0.0f, "Volume: %.2f dB");
+	ImGui::PopFont();
 	ImGui::PushItemWidth(-1.0);
 	ImGui::SameLine();
+	ImGui::PushFont(fontMono);
 	ImGui::SliderFloat("##playFrequency", &playFrequency, 1.0f, 10000.0f, "Frequency: %.2f Hz", ImGuiSliderFlags_Logarithmic);
+	ImGui::PopFont();
 
 	ImGui::Checkbox("Morph Interpolate", &morphInterpolate);
 	if (playModeXY) {
@@ -472,18 +473,26 @@ void renderPreview() {
 		ImGui::PushItemWidth(-1.0);
 		float width = ImGui::CalcItemWidth() / 2.0 - ImGui::GetStyle().FramePadding.y;
 		ImGui::PushItemWidth(width);
+		ImGui::PushFont(fontMono);
 		ImGui::SliderFloat("##Morph X", &morphX, 0.0, BANK_GRID_WIDTH - 1, "Morph X: %.3f");
+		ImGui::PopFont();
 		ImGui::SameLine();
+		ImGui::PushFont(fontMono);
 		ImGui::SliderFloat("##Morph Y", &morphY, 0.0, BANK_GRID_HEIGHT - 1, "Morph Y: %.3f");
+		ImGui::PopFont();
 	}
 	else {
 		ImGui::SameLine();
 		ImGui::PushItemWidth(-1.0);
 		float width = ImGui::CalcItemWidth() / 2.0 - ImGui::GetStyle().FramePadding.y;
 		ImGui::PushItemWidth(width);
+		ImGui::PushFont(fontMono);
 		ImGui::SliderFloat("##Morph Z", &morphZ, 0.0, BANK_LEN - 1, "Morph Z: %.3f");
+		ImGui::PopFont();
 		ImGui::SameLine();
+		ImGui::PushFont(fontMono);
 		ImGui::SliderFloat("##Morph Z Speed", &morphZSpeed, 0.f, 10.f, "Morph Z Speed: %.3f Hz", ImGuiSliderFlags_Logarithmic);
+		ImGui::PopFont();
 	}
 
 	refreshMorphSnap();
@@ -508,7 +517,10 @@ void effectSlider(EffectID effect) {
 	snprintf(id, sizeof(id), "##%s", effectNames[effect]);
 	char text[64];
 	snprintf(text, sizeof(text), "%s: %%.3f", effectNames[effect]);
-	if (ImGui::SliderFloat(id, &currentBank.waves[selectedId].effects[effect], 0.0f, 1.0f, text)) {
+	ImGui::PushFont(fontMono);
+	bool sliderEdited = ImGui::SliderFloat(id, &currentBank.waves[selectedId].effects[effect], 0.0f, 1.0f, text);
+	ImGui::PopFont();
+	if (sliderEdited) {
 		currentBank.waves[selectedId].updatePost();
 		historyPush();
 	}
@@ -628,7 +640,10 @@ void effectHistogram(EffectID effect, Tool tool) {
 	snprintf(id, sizeof(id), "##%sAverage", effectNames[effect]);
 	char text[64];
 	snprintf(text, sizeof(text), "Average %s: %%.3f", effectNames[effect]);
-	if (ImGui::SliderFloat(id, &average, 0.0f, 1.0f, text)) {
+	ImGui::PushFont(fontMono);
+	bool sliderEdited = ImGui::SliderFloat(id, &average, 0.0f, 1.0f, text);
+	ImGui::PopFont();
+	if (sliderEdited) {
 		// Change the average effect level to the new average
 		float deltaAverage = average - oldAverage;
 		for (int i = 0; i < BANK_LEN; i++) {
@@ -742,9 +757,13 @@ void waterfallPage() {
 	{
 		ImGui::PushItemWidth(-1.0);
 		static float amplitude = 0.25;
+		ImGui::PushFont(fontMono);
 		ImGui::SliderFloat("##amplitude", &amplitude, 0.01, 1.0, "Scale: %.3f", ImGuiSliderFlags_Logarithmic);
+		ImGui::PopFont();
 		static float angle = 1.0;
+		ImGui::PushFont(fontMono);
 		ImGui::SliderFloat("##angle", &angle, 0.0, 1.0, "Angle: %.3f");
+		ImGui::PopFont();
 
 		renderWaterfall("##waterfall", -1.0, amplitude, angle, &morphZ);
 	}

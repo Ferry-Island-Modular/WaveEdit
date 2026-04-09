@@ -231,10 +231,14 @@ void importPage() {
 				gain = clampf(-20.0 * log10f(getAudioAmplitude()), -40.0, 40.0);
 			}
 			ImGui::SameLine();
+			ImGui::PushFont(fontMono);
 			ImGui::SliderFloat("##gain", &gain, -40.0, 40.0, "Gain: %.2fdB");
+			ImGui::PopFont();
 
 			// Offset
+			ImGui::PushFont(fontMono);
 			ImGui::SliderFloat("##offset", &offset, 0.0, 1.0, "Offset: %.4f");
+			ImGui::PopFont();
 
 			// Zoom
 			if (ImGui::Button("Zoom 1:1")) zoom = 1.0;
@@ -246,7 +250,9 @@ void importPage() {
 			ImGui::SameLine();
 			ImGui::Checkbox("Snap to Power of 2", &snapZoom);
 			ImGui::SameLine();
+			ImGui::PushFont(fontMono);
 			ImGui::SliderFloat("##zoom", &zoom, 0.01, 100.0, "Zoom: %.4f", ImGuiSliderFlags_Logarithmic);
+			ImGui::PopFont();
 			if (snapZoom) {
 				zoom = powf(2.0, roundf(log2f(zoom)));
 			}
@@ -267,9 +273,13 @@ void importPage() {
 			ImGui::PushItemWidth(-1.0);
 			float width = ImGui::CalcItemWidth() / 2.0 - ImGui::GetStyle().FramePadding.y;
 			ImGui::PushItemWidth(width);
+			ImGui::PushFont(fontMono);
 			ImGui::SliderFloat("##leftTrim", &leftTrim, 0.0, BANK_LEN, snapTrim ? "Left Trim: %.0f" : "Left Trim: %.2f");
+			ImGui::PopFont();
 			ImGui::SameLine();
+			ImGui::PushFont(fontMono);
 			ImGui::SliderFloat("##rightTrim", &rightTrim, 0.0, BANK_LEN, snapTrim ? "Right Trim: %.0f" : "Right Trim: %.2f");
+			ImGui::PopFont();
 			ImGui::PopItemWidth();
 			ImGui::PopItemWidth();
 

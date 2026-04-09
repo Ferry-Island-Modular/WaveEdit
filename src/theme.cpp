@@ -345,7 +345,7 @@ void themeApply(int id, bool *out_logoIsDark) {
 	// Buttons
 	SET(Button,                 1);
 	SET(ButtonHovered,          2);
-	SET(ButtonActive,           0xD);
+	SET(ButtonActive,           3);
 
 	// Headers
 	SET(Header,                 1);
