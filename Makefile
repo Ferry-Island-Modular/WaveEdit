@@ -2,6 +2,7 @@ VERSION = 1.1
 
 FLAGS = -Wall -Wextra -Wno-unused-parameter -g -Wno-unused -O3 -ffast-math \
 	-DVERSION=$(VERSION) -DPFFFT_SIMD_DISABLE \
+	-DIMGUI_USER_CONFIG=\"src/imconfig_user.h\" \
 	-I. -Iext -Iext/imgui -Idep/include -Idep/include/SDL2
 
 # Architecture-specific optimizations
@@ -23,7 +24,10 @@ SOURCES = \
 	ext/imgui/imgui.cpp \
 	ext/imgui/imgui_draw.cpp \
 	ext/imgui/imgui_demo.cpp \
-	ext/imgui/examples/sdl_opengl2_example/imgui_impl_sdl.cpp \
+	ext/imgui/imgui_tables.cpp \
+	ext/imgui/imgui_widgets.cpp \
+	ext/imgui/backends/imgui_impl_sdl2.cpp \
+	ext/imgui/backends/imgui_impl_opengl2.cpp \
 	$(wildcard src/*.cpp)
 
 

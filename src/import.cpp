@@ -1,7 +1,7 @@
 #include "WaveEdit.hpp"
 
-#include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui.h"
 #include "imgui_internal.h"
 
 #include <libgen.h>
@@ -246,7 +246,7 @@ void importPage() {
 			ImGui::SameLine();
 			ImGui::Checkbox("Snap to Power of 2", &snapZoom);
 			ImGui::SameLine();
-			ImGui::SliderFloat("##zoom", &zoom, 0.01, 100.0, "Zoom: %.4f", 0.0);
+			ImGui::SliderFloat("##zoom", &zoom, 0.01, 100.0, "Zoom: %.4f", ImGuiSliderFlags_Logarithmic);
 			if (snapZoom) {
 				zoom = powf(2.0, roundf(log2f(zoom)));
 			}

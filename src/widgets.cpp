@@ -1,7 +1,7 @@
 #include "WaveEdit.hpp"
 
-#include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui.h"
 #include "imgui_internal.h"
 
 
@@ -84,7 +84,7 @@ static bool editorBehavior(ImGuiID id, const ImRect& box, const ImRect& inner, f
 	ImGuiContext &g = *GImGui;
 	ImGuiWindow *window = ImGui::GetCurrentWindow();
 
-	bool hovered = ImGui::IsHovered(box, id);
+	bool hovered = ImGui::ItemHoverable(box, id, 0);
 	if (hovered) {
 		ImGui::SetHoveredID(id);
 		if (g.IO.MouseClicked[0]) {
@@ -166,7 +166,7 @@ bool renderWave(const char *name, float height, float *points, int pointsLen, co
 	ImRect box = ImRect(window->DC.CursorPos, window->DC.CursorPos + size);
 	ImRect inner = ImRect(box.Min + style.FramePadding, box.Max - style.FramePadding);
 	ImGui::ItemSize(box, style.FramePadding.y);
-	if (!ImGui::ItemAdd(box, NULL))
+	if (!ImGui::ItemAdd(box, id))
 		return false;
 
 	// Draw frame
@@ -182,7 +182,7 @@ bool renderWave(const char *name, float height, float *points, int pointsLen, co
 	// 	ImGui::SetTooltip("%f, %f\n", x, y);
 	// }
 
-	// const bool hovered = ImGui::IsHovered(box, id);
+	// const bool hovered = ImGui::ItemHoverable(box, id, 0);
 	// if (hovered) {
 	// 	ImGui::SetHoveredID(id);
 	// 	ImGui::SetActiveID(id, window);
@@ -229,7 +229,7 @@ bool renderHistogram(const char *name, float height, float *bars, int barsLen, c
 	ImRect box = ImRect(pos, pos + size);
 	ImRect inner = ImRect(box.Min + style.FramePadding, box.Max - style.FramePadding);
 	ImGui::ItemSize(box, style.FramePadding.y);
-	if (!ImGui::ItemAdd(box, NULL))
+	if (!ImGui::ItemAdd(box, id))
 		return false;
 
 	bool edited = editorBehavior(id, box, inner, bars, barsLen, -0.5, barsLen - 0.5, 1.0, 0.0, tool);
@@ -301,7 +301,7 @@ void renderBankGrid(const char *name, float height, int gridWidth, float *gridX,
 	ImRect box = ImRect(window->DC.CursorPos, window->DC.CursorPos + size);
 	ImVec2 cellSize = ImVec2((size.x + padding.x) / gridWidth, (size.y + padding.y) / gridHeight);
 	ImGui::ItemSize(box, style.FramePadding.y);
-	if (!ImGui::ItemAdd(box, NULL))
+	if (!ImGui::ItemAdd(box, id))
 		return;
 
 	// Wave grid
@@ -340,7 +340,7 @@ void renderBankGrid(const char *name, float height, int gridWidth, float *gridX,
 	}
 
 	// Behavior
-	bool hovered = ImGui::IsHovered(box, id);
+	bool hovered = ImGui::ItemHoverable(box, id, 0);
 	if (hovered) {
 		ImGui::SetHoveredID(id);
 		if (g.IO.MouseClicked[0]) {
@@ -466,7 +466,7 @@ void renderWaterfall(const char *name, float height, float amplitude, float angl
 	ImGui::PushClipRect(box.Min, box.Max, true);
 
 	// Behavior
-	bool hovered = ImGui::IsHovered(box, id);
+	bool hovered = ImGui::ItemHoverable(box, id, 0);
 	if (hovered) {
 		ImGui::SetHoveredID(id);
 		if (g.IO.MouseClicked[0]) {
@@ -512,7 +512,7 @@ void renderWaterfall(const char *name, float height, float amplitude, float angl
 			points[i] = point;
 		}
 		float thickness = 1.0;
-		window->DrawList->AddPolyline(points, WAVE_LEN, ImGui::GetColorU32(ImGuiCol_FrameBg), false, thickness, true);
+		window->DrawList->AddPolyline(points, WAVE_LEN, ImGui::GetColorU32(ImGuiCol_FrameBg), ImDrawFlags_None, thickness);
 	}
 
 	// Post-effect plots
@@ -527,7 +527,7 @@ void renderWaterfall(const char *name, float height, float amplitude, float angl
 			points[i] = point;
 		}
 		float thickness = 1.0 + 4.0 * fmaxf(1.0 - fabsf(b - *activeZ), 0.0);
-		window->DrawList->AddPolyline(points, WAVE_LEN, ImGui::GetColorU32(ImGuiCol_PlotHistogram), false, thickness, true);
+		window->DrawList->AddPolyline(points, WAVE_LEN, ImGui::GetColorU32(ImGuiCol_PlotHistogram), ImDrawFlags_None, thickness);
 	}
 
 	ImGui::PopClipRect();
@@ -552,11 +552,11 @@ float renderBankWave(const char *name, float height, const float *lines, int lin
 	ImRect box = ImRect(window->DC.CursorPos, window->DC.CursorPos + size);
 	ImRect inner = ImRect(box.Min + style.FramePadding, box.Max - style.FramePadding);
 	ImGui::ItemSize(box, style.FramePadding.y);
-	if (!ImGui::ItemAdd(box, NULL))
+	if (!ImGui::ItemAdd(box, id))
 		return 0.0;
 
 	// Behavior
-	bool hovered = ImGui::IsHovered(box, id);
+	bool hovered = ImGui::ItemHoverable(box, id, 0);
 	if (hovered) {
 		ImGui::SetHoveredID(id);
 		if (g.IO.MouseClicked[0]) {

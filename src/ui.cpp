@@ -11,8 +11,8 @@
 #include <SDL.h>
 #include <SDL_opengl.h>
 
-#include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui.h"
 #include "imgui_internal.h"
 
 #include "osdialog/osdialog.h"
@@ -81,7 +81,7 @@ static ImTextureID loadImage(const char *filename) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	return (void*)(intptr_t) textureId;
+	return (ImTextureID) textureId;
 }
 
 
@@ -240,62 +240,65 @@ static void menuKeyCommands() {
 	ImGuiContext &g = *GImGui;
 	ImGuiIO &io = ImGui::GetIO();
 
-	if (io.OSXBehaviors ? io.KeySuper : io.KeyCtrl) {
-		if (ImGui::IsKeyPressed(SDLK_n) && !io.KeyShift && !io.KeyAlt)
+	// Modern imgui (v1.87+) swaps Cmd<->Ctrl internally when ConfigMacOSXBehaviors
+	// is enabled, so io.KeyCtrl represents the platform shortcut modifier
+	// (Cmd on Mac, Ctrl elsewhere). Use it unconditionally.
+	if (io.KeyCtrl) {
+		if (ImGui::IsKeyPressed(ImGuiKey_N) && !io.KeyShift && !io.KeyAlt)
 			menuNewBank();
-		if (ImGui::IsKeyPressed(SDLK_o) && !io.KeyShift && !io.KeyAlt)
+		if (ImGui::IsKeyPressed(ImGuiKey_O) && !io.KeyShift && !io.KeyAlt)
 			menuOpenBank();
-		if (ImGui::IsKeyPressed(SDLK_s) && !io.KeyShift && !io.KeyAlt)
+		if (ImGui::IsKeyPressed(ImGuiKey_S) && !io.KeyShift && !io.KeyAlt)
 			menuSaveBank();
-		if (ImGui::IsKeyPressed(SDLK_s) && io.KeyShift && !io.KeyAlt)
+		if (ImGui::IsKeyPressed(ImGuiKey_S) && io.KeyShift && !io.KeyAlt)
 			menuSaveBankAs();
-		if (ImGui::IsKeyPressed(SDLK_q) && !io.KeyShift && !io.KeyAlt)
+		if (ImGui::IsKeyPressed(ImGuiKey_Q) && !io.KeyShift && !io.KeyAlt)
 			menuQuit();
-		if (ImGui::IsKeyPressed(SDLK_z) && !io.KeyShift && !io.KeyAlt)
+		if (ImGui::IsKeyPressed(ImGuiKey_Z) && !io.KeyShift && !io.KeyAlt)
 			historyUndo();
-		if (ImGui::IsKeyPressed(SDLK_z) && io.KeyShift && !io.KeyAlt)
+		if (ImGui::IsKeyPressed(ImGuiKey_Z) && io.KeyShift && !io.KeyAlt)
 			historyRedo();
-		if (ImGui::IsKeyPressed(SDLK_a) && !io.KeyShift && !io.KeyAlt)
+		if (ImGui::IsKeyPressed(ImGuiKey_A) && !io.KeyShift && !io.KeyAlt)
 			menuSelectAll();
-		if (ImGui::IsKeyPressed(SDLK_c) && !io.KeyShift && !io.KeyAlt)
+		if (ImGui::IsKeyPressed(ImGuiKey_C) && !io.KeyShift && !io.KeyAlt)
 			menuCopy();
-		if (ImGui::IsKeyPressed(SDLK_x) && !io.KeyShift && !io.KeyAlt)
+		if (ImGui::IsKeyPressed(ImGuiKey_X) && !io.KeyShift && !io.KeyAlt)
 			menuCut();
-		if (ImGui::IsKeyPressed(SDLK_v) && !io.KeyShift && !io.KeyAlt)
+		if (ImGui::IsKeyPressed(ImGuiKey_V) && !io.KeyShift && !io.KeyAlt)
 			menuPaste();
 	}
-	// I have NO idea why the scancode is needed here but the keycodes are needed for the letters.
-	// It looks like SDLZ_F1 is not defined correctly or something.
-	if (ImGui::IsKeyPressed(SDL_SCANCODE_F1))
+	// F1 was previously using a scancode instead of a keycode due to old SDL-native keymap quirks.
+	// Modern imgui uses its own ImGuiKey enum, so the scancode/keycode distinction no longer applies.
+	if (ImGui::IsKeyPressed(ImGuiKey_F1))
 		menuManual();
 
 	if (!io.KeySuper && !io.KeyCtrl && !io.KeyShift && !io.KeyAlt) {
 		// Only trigger these key commands if no text box is focused
-		if (!g.ActiveId || g.ActiveId != GImGui->InputTextState.Id) {
-			if (ImGui::IsKeyPressed(SDLK_r))
+		if (!g.ActiveId || g.ActiveId != GImGui->InputTextState.ID) {
+			if (ImGui::IsKeyPressed(ImGuiKey_R))
 				menuRandomize();
-			if (ImGui::IsKeyPressed(io.OSXBehaviors ? SDLK_BACKSPACE : SDLK_DELETE))
+			if (ImGui::IsKeyPressed(io.ConfigMacOSXBehaviors ? ImGuiKey_Backspace : ImGuiKey_Delete))
 				menuClear();
 			// Pages
-			if (ImGui::IsKeyPressed(SDLK_SPACE))
+			if (ImGui::IsKeyPressed(ImGuiKey_Space))
 				playEnabled = !playEnabled;
-			if (ImGui::IsKeyPressed(SDLK_1))
+			if (ImGui::IsKeyPressed(ImGuiKey_1))
 				currentPage = EDITOR_PAGE;
-			if (ImGui::IsKeyPressed(SDLK_2))
+			if (ImGui::IsKeyPressed(ImGuiKey_2))
 				currentPage = EFFECT_PAGE;
-			if (ImGui::IsKeyPressed(SDLK_3))
+			if (ImGui::IsKeyPressed(ImGuiKey_3))
 				currentPage = GRID_PAGE;
-			if (ImGui::IsKeyPressed(SDLK_4))
+			if (ImGui::IsKeyPressed(ImGuiKey_4))
 				currentPage = WATERFALL_PAGE;
-			if (ImGui::IsKeyPressed(SDLK_5))
+			if (ImGui::IsKeyPressed(ImGuiKey_5))
 				currentPage = IMPORT_PAGE;
-			if (ImGui::IsKeyPressed(SDL_SCANCODE_UP))
+			if (ImGui::IsKeyPressed(ImGuiKey_UpArrow))
 				incrementSelectedId(currentPage == GRID_PAGE ? -BANK_GRID_WIDTH : -1);
-			if (ImGui::IsKeyPressed(SDL_SCANCODE_DOWN))
+			if (ImGui::IsKeyPressed(ImGuiKey_DownArrow))
 				incrementSelectedId(currentPage == GRID_PAGE ? BANK_GRID_WIDTH : 1);
-			if (ImGui::IsKeyPressed(SDL_SCANCODE_LEFT))
+			if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow))
 				incrementSelectedId(-1);
-			if (ImGui::IsKeyPressed(SDL_SCANCODE_RIGHT))
+			if (ImGui::IsKeyPressed(ImGuiKey_RightArrow))
 				incrementSelectedId(1);
 		}
 	}
@@ -324,13 +327,13 @@ void renderWaveMenu() {
 		ImGui::MenuItem(menuName, NULL, false, false);
 	}
 
-	if (ImGui::MenuItem("Copy", ImGui::GetIO().OSXBehaviors ? "Cmd+C" : "Ctrl+C")) {
+	if (ImGui::MenuItem("Copy", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+C" : "Ctrl+C")) {
 		menuCopy();
 	}
-	if (ImGui::MenuItem("Cut", ImGui::GetIO().OSXBehaviors ? "Cmd+X" : "Ctrl+X")) {
+	if (ImGui::MenuItem("Cut", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+X" : "Ctrl+X")) {
 		menuCut();
 	}
-	if (ImGui::MenuItem("Paste", ImGui::GetIO().OSXBehaviors ? "Cmd+V" : "Ctrl+V", false, clipboardActive)) {
+	if (ImGui::MenuItem("Paste", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+V" : "Ctrl+V", false, clipboardActive)) {
 		menuPaste();
 	}
 
@@ -386,28 +389,28 @@ void renderMenu() {
 		}
 		// File
 		if (ImGui::BeginMenu("File")) {
-			if (ImGui::MenuItem("New Bank", ImGui::GetIO().OSXBehaviors ? "Cmd+N" : "Ctrl+N"))
+			if (ImGui::MenuItem("New Bank", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+N" : "Ctrl+N"))
 				menuNewBank();
-			if (ImGui::MenuItem("Open Bank...", ImGui::GetIO().OSXBehaviors ? "Cmd+O" : "Ctrl+O"))
+			if (ImGui::MenuItem("Open Bank...", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+O" : "Ctrl+O"))
 				menuOpenBank();
-			if (ImGui::MenuItem("Save Bank", ImGui::GetIO().OSXBehaviors ? "Cmd+S" : "Ctrl+S"))
+			if (ImGui::MenuItem("Save Bank", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+S" : "Ctrl+S"))
 				menuSaveBank();
-			if (ImGui::MenuItem("Save Bank As...", ImGui::GetIO().OSXBehaviors ? "Cmd+Shift+S" : "Ctrl+Shift+S"))
+			if (ImGui::MenuItem("Save Bank As...", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+Shift+S" : "Ctrl+Shift+S"))
 				menuSaveBankAs();
 			if (ImGui::MenuItem("Save Waves to Folder...", NULL))
 				menuSaveWaves();
-			if (ImGui::MenuItem("Quit", ImGui::GetIO().OSXBehaviors ? "Cmd+Q" : "Ctrl+Q"))
+			if (ImGui::MenuItem("Quit", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+Q" : "Ctrl+Q"))
 				menuQuit();
 
 			ImGui::EndMenu();
 		}
 		// Edit
 		if (ImGui::BeginMenu("Edit")) {
-			if (ImGui::MenuItem("Undo", ImGui::GetIO().OSXBehaviors ? "Cmd+Z" : "Ctrl+Z"))
+			if (ImGui::MenuItem("Undo", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+Z" : "Ctrl+Z"))
 				historyUndo();
-			if (ImGui::MenuItem("Redo", ImGui::GetIO().OSXBehaviors ? "Cmd+Shift+Z" : "Ctrl+Shift+Z"))
+			if (ImGui::MenuItem("Redo", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+Shift+Z" : "Ctrl+Shift+Z"))
 				historyRedo();
-			if (ImGui::MenuItem("Select All", ImGui::GetIO().OSXBehaviors ? "Cmd+A" : "Ctrl+A"))
+			if (ImGui::MenuItem("Select All", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+A" : "Ctrl+A"))
 				menuSelectAll();
 			ImGui::MenuItem("##spacer", NULL, false, false);
 			renderWaveMenu();
@@ -463,7 +466,7 @@ void renderPreview() {
 	ImGui::SliderFloat("##playVolume", &playVolume, -60.0f, 0.0f, "Volume: %.2f dB");
 	ImGui::PushItemWidth(-1.0);
 	ImGui::SameLine();
-	ImGui::SliderFloat("##playFrequency", &playFrequency, 1.0f, 10000.0f, "Frequency: %.2f Hz", 0.0f);
+	ImGui::SliderFloat("##playFrequency", &playFrequency, 1.0f, 10000.0f, "Frequency: %.2f Hz", ImGuiSliderFlags_Logarithmic);
 
 	ImGui::Checkbox("Morph Interpolate", &morphInterpolate);
 	if (playModeXY) {
@@ -482,7 +485,7 @@ void renderPreview() {
 		ImGui::PushItemWidth(width);
 		ImGui::SliderFloat("##Morph Z", &morphZ, 0.0, BANK_LEN - 1, "Morph Z: %.3f");
 		ImGui::SameLine();
-		ImGui::SliderFloat("##Morph Z Speed", &morphZSpeed, 0.f, 10.f, "Morph Z Speed: %.3f Hz", 3.f);
+		ImGui::SliderFloat("##Morph Z Speed", &morphZSpeed, 0.f, 10.f, "Morph Z Speed: %.3f Hz", ImGuiSliderFlags_Logarithmic);
 	}
 
 	refreshMorphSnap();
@@ -741,7 +744,7 @@ void waterfallPage() {
 	{
 		ImGui::PushItemWidth(-1.0);
 		static float amplitude = 0.25;
-		ImGui::SliderFloat("##amplitude", &amplitude, 0.01, 1.0, "Scale: %.3f", 0.0);
+		ImGui::SliderFloat("##amplitude", &amplitude, 0.01, 1.0, "Scale: %.3f", ImGuiSliderFlags_Logarithmic);
 		static float angle = 1.0;
 		ImGui::SliderFloat("##angle", &angle, 0.0, 1.0, "Angle: %.3f");
 
@@ -755,7 +758,7 @@ void renderMain() {
 	ImGui::SetNextWindowPos(ImVec2(0, 0));
 	ImGui::SetNextWindowSize(ImVec2((int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y));
 
-	ImGui::Begin("", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_MenuBar);
+	ImGui::Begin("WaveEditMainWindow", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_MenuBar);
 	{
 		// Menu bar
 		renderMenu();
@@ -789,7 +792,7 @@ void renderMain() {
 	ImGui::End();
 
 	if (showTestWindow) {
-		ImGui::ShowTestWindow(&showTestWindow);
+		ImGui::ShowDemoWindow(&showTestWindow);
 	}
 }
 
@@ -802,7 +805,7 @@ static void refreshStyle() {
 	style.Alpha = 1.f;
 	style.WindowRounding = 2.f;
 	style.GrabRounding = 2.f;
-	style.ChildWindowRounding = 2.f;
+	style.ChildRounding = 2.f;
 	style.ScrollbarRounding = 2.f;
 	style.FrameRounding = 2.f;
 	style.FramePadding = ImVec2(6.0f, 4.0f);
@@ -811,7 +814,7 @@ static void refreshStyle() {
 		style.Colors[ImGuiCol_Text]                  = ImVec4(0.73f, 0.73f, 0.73f, 1.00f);
 		style.Colors[ImGuiCol_TextDisabled]          = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
 		style.Colors[ImGuiCol_WindowBg]              = ImVec4(0.26f, 0.26f, 0.26f, 0.95f);
-		style.Colors[ImGuiCol_ChildWindowBg]         = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
+		style.Colors[ImGuiCol_ChildBg]         = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
 		style.Colors[ImGuiCol_PopupBg]               = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
 		style.Colors[ImGuiCol_Border]                = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
 		style.Colors[ImGuiCol_BorderShadow]          = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
@@ -826,7 +829,7 @@ static void refreshStyle() {
 		style.Colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
 		style.Colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
 		style.Colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-		style.Colors[ImGuiCol_ComboBg]               = ImVec4(0.32f, 0.32f, 0.32f, 1.00f);
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_ComboBg]               = ImVec4(0.32f, 0.32f, 0.32f, 1.00f);
 		style.Colors[ImGuiCol_CheckMark]             = ImVec4(0.78f, 0.78f, 0.78f, 1.00f);
 		style.Colors[ImGuiCol_SliderGrab]            = ImVec4(0.74f, 0.74f, 0.74f, 1.00f);
 		style.Colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.74f, 0.74f, 0.74f, 1.00f);
@@ -842,15 +845,15 @@ static void refreshStyle() {
 		style.Colors[ImGuiCol_ResizeGrip]            = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
 		style.Colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
 		style.Colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-		style.Colors[ImGuiCol_CloseButton]           = ImVec4(0.59f, 0.59f, 0.59f, 1.00f);
-		style.Colors[ImGuiCol_CloseButtonHovered]    = ImVec4(0.98f, 0.39f, 0.36f, 1.00f);
-		style.Colors[ImGuiCol_CloseButtonActive]     = ImVec4(0.98f, 0.39f, 0.36f, 1.00f);
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_CloseButton]           = ImVec4(0.59f, 0.59f, 0.59f, 1.00f);
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_CloseButtonHovered]    = ImVec4(0.98f, 0.39f, 0.36f, 1.00f);
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_CloseButtonActive]     = ImVec4(0.98f, 0.39f, 0.36f, 1.00f);
 		style.Colors[ImGuiCol_PlotLines]             = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
 		style.Colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
 		style.Colors[ImGuiCol_PlotHistogram]         = ImVec4(1.0, 0.8, 0.2, 1.0);
 		style.Colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(0.7, 0.5, 0.1, 0.5);
 		style.Colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.32f, 0.52f, 0.65f, 1.00f);
-		style.Colors[ImGuiCol_ModalWindowDarkening]  = ImVec4(0.20f, 0.20f, 0.20f, 0.50f);
+		style.Colors[ImGuiCol_ModalWindowDimBg]  = ImVec4(0.20f, 0.20f, 0.20f, 0.50f);
 		logoTexture = logoTextureLight;
 	}
 	else if (styleId == 1) {
@@ -877,7 +880,7 @@ static void refreshStyle() {
 		style.Colors[ImGuiCol_Text]                 = base[0x6];
 		style.Colors[ImGuiCol_TextDisabled]         = base[0x4];
 		style.Colors[ImGuiCol_WindowBg]             = base[0x2];
-		style.Colors[ImGuiCol_ChildWindowBg]        = base[0x2];
+		style.Colors[ImGuiCol_ChildBg]        = base[0x2];
 		style.Colors[ImGuiCol_PopupBg]              = base[0x2];
 		style.Colors[ImGuiCol_Border]               = transparent;
 		style.Colors[ImGuiCol_BorderShadow]         = transparent;
@@ -892,7 +895,7 @@ static void refreshStyle() {
 		style.Colors[ImGuiCol_ScrollbarGrab]        = base[0x4];
 		style.Colors[ImGuiCol_ScrollbarGrabHovered] = base[0x4];
 		style.Colors[ImGuiCol_ScrollbarGrabActive]  = base[0x4];
-		style.Colors[ImGuiCol_ComboBg]              = base[0x4];
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_ComboBg]              = base[0x4];
 		style.Colors[ImGuiCol_CheckMark]            = base[0x4];
 		style.Colors[ImGuiCol_SliderGrab]           = base[0x4];
 		style.Colors[ImGuiCol_SliderGrabActive]     = base[0x4];
@@ -908,15 +911,15 @@ static void refreshStyle() {
 		style.Colors[ImGuiCol_ResizeGrip]           = base[0x2];
 		style.Colors[ImGuiCol_ResizeGripHovered]    = base[0x2];
 		style.Colors[ImGuiCol_ResizeGripActive]     = base[0x2];
-		style.Colors[ImGuiCol_CloseButton]          = base[0x2];
-		style.Colors[ImGuiCol_CloseButtonHovered]   = base[0x2];
-		style.Colors[ImGuiCol_CloseButtonActive]    = base[0x2];
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_CloseButton]          = base[0x2];
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_CloseButtonHovered]   = base[0x2];
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_CloseButtonActive]    = base[0x2];
 		style.Colors[ImGuiCol_PlotLines]            = base[0x4];
 		style.Colors[ImGuiCol_PlotLinesHovered]     = base[0x4];
 		style.Colors[ImGuiCol_PlotHistogram]        = darken(base[0x8], 0.2);
 		style.Colors[ImGuiCol_PlotHistogramHovered] = alpha(base[0x7], 0.2);
 		style.Colors[ImGuiCol_TextSelectedBg]       = base[0x3];
-		style.Colors[ImGuiCol_ModalWindowDarkening] = alpha(base[0x1], 0.5);
+		style.Colors[ImGuiCol_ModalWindowDimBg] = alpha(base[0x1], 0.5);
 		logoTexture = logoTextureLight;
 	}
 	else if (styleId == 2) {
@@ -943,7 +946,7 @@ static void refreshStyle() {
 		style.Colors[ImGuiCol_Text]                 = base[0x1];
 		style.Colors[ImGuiCol_TextDisabled]         = base[0x2];
 		style.Colors[ImGuiCol_WindowBg]             = base[0x7];
-		style.Colors[ImGuiCol_ChildWindowBg]        = base[0x7];
+		style.Colors[ImGuiCol_ChildBg]        = base[0x7];
 		style.Colors[ImGuiCol_PopupBg]              = base[0x7];
 		style.Colors[ImGuiCol_Border]               = transparent;
 		style.Colors[ImGuiCol_BorderShadow]         = transparent;
@@ -958,7 +961,7 @@ static void refreshStyle() {
 		style.Colors[ImGuiCol_ScrollbarGrab]        = base[0x5];
 		style.Colors[ImGuiCol_ScrollbarGrabHovered] = base[0x5];
 		style.Colors[ImGuiCol_ScrollbarGrabActive]  = base[0x5];
-		style.Colors[ImGuiCol_ComboBg]              = base[0x6];
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_ComboBg]              = base[0x6];
 		style.Colors[ImGuiCol_CheckMark]            = base[0x5];
 		style.Colors[ImGuiCol_SliderGrab]           = base[0x5];
 		style.Colors[ImGuiCol_SliderGrabActive]     = base[0x5];
@@ -974,15 +977,15 @@ static void refreshStyle() {
 		style.Colors[ImGuiCol_ResizeGrip]           = base[0x2];
 		style.Colors[ImGuiCol_ResizeGripHovered]    = base[0x2];
 		style.Colors[ImGuiCol_ResizeGripActive]     = base[0x2];
-		style.Colors[ImGuiCol_CloseButton]          = base[0x2];
-		style.Colors[ImGuiCol_CloseButtonHovered]   = base[0x2];
-		style.Colors[ImGuiCol_CloseButtonActive]    = base[0x2];
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_CloseButton]          = base[0x2];
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_CloseButtonHovered]   = base[0x2];
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_CloseButtonActive]    = base[0x2];
 		style.Colors[ImGuiCol_PlotLines]            = base[0x4];
 		style.Colors[ImGuiCol_PlotLinesHovered]     = base[0x4];
 		style.Colors[ImGuiCol_PlotHistogram]        = base[0xc];
 		style.Colors[ImGuiCol_PlotHistogramHovered] = alpha(base[0x5], 0.8);
 		style.Colors[ImGuiCol_TextSelectedBg]       = base[0x3];
-		style.Colors[ImGuiCol_ModalWindowDarkening] = alpha(base[0x2], 0.5);
+		style.Colors[ImGuiCol_ModalWindowDimBg] = alpha(base[0x2], 0.5);
 		logoTexture = logoTextureDark;
 	}
 	else if (styleId == 3) {
@@ -1009,7 +1012,7 @@ static void refreshStyle() {
 		style.Colors[ImGuiCol_Text]                 = base[0x1];
 		style.Colors[ImGuiCol_TextDisabled]         = base[0x2];
 		style.Colors[ImGuiCol_WindowBg]             = base[0x7];
-		style.Colors[ImGuiCol_ChildWindowBg]        = base[0x7];
+		style.Colors[ImGuiCol_ChildBg]        = base[0x7];
 		style.Colors[ImGuiCol_PopupBg]              = base[0x7];
 		style.Colors[ImGuiCol_Border]               = transparent;
 		style.Colors[ImGuiCol_BorderShadow]         = transparent;
@@ -1024,7 +1027,7 @@ static void refreshStyle() {
 		style.Colors[ImGuiCol_ScrollbarGrab]        = base[0x5];
 		style.Colors[ImGuiCol_ScrollbarGrabHovered] = base[0x5];
 		style.Colors[ImGuiCol_ScrollbarGrabActive]  = base[0x5];
-		style.Colors[ImGuiCol_ComboBg]              = base[0x6];
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_ComboBg]              = base[0x6];
 		style.Colors[ImGuiCol_CheckMark]            = base[0x5];
 		style.Colors[ImGuiCol_SliderGrab]           = base[0x5];
 		style.Colors[ImGuiCol_SliderGrabActive]     = base[0x5];
@@ -1040,15 +1043,15 @@ static void refreshStyle() {
 		style.Colors[ImGuiCol_ResizeGrip]           = base[0x2];
 		style.Colors[ImGuiCol_ResizeGripHovered]    = base[0x2];
 		style.Colors[ImGuiCol_ResizeGripActive]     = base[0x2];
-		style.Colors[ImGuiCol_CloseButton]          = base[0x2];
-		style.Colors[ImGuiCol_CloseButtonHovered]   = base[0x2];
-		style.Colors[ImGuiCol_CloseButtonActive]    = base[0x2];
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_CloseButton]          = base[0x2];
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_CloseButtonHovered]   = base[0x2];
+		// REMOVED_IN_IMGUI_V1_87: style.Colors[ImGuiCol_CloseButtonActive]    = base[0x2];
 		style.Colors[ImGuiCol_PlotLines]            = base[0x4];
 		style.Colors[ImGuiCol_PlotLinesHovered]     = base[0x4];
 		style.Colors[ImGuiCol_PlotHistogram]        = base[0xd];
 		style.Colors[ImGuiCol_PlotHistogramHovered] = alpha(base[0xc], 0.8);
 		style.Colors[ImGuiCol_TextSelectedBg]       = base[0x3];
-		style.Colors[ImGuiCol_ModalWindowDarkening] = alpha(base[0x2], 0.5);
+		style.Colors[ImGuiCol_ModalWindowDimBg] = alpha(base[0x2], 0.5);
 		logoTexture = logoTextureDark;
 	}
 }
