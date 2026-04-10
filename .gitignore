@@ -1,1 +1,4 @@
 *.o
+
+# Superpowers brainstorming companion session files
+.superpowers/
