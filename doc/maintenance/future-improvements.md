@@ -1,7 +1,15 @@
 # Future Improvements Roadmap
 
-**Last updated:** 2026-04-09
+**Last updated:** 2026-04-10
 **Purpose:** Running index of sub-projects and improvements that have been **identified but explicitly deferred** during planning of other work. Each item here is a potential future brainstorm session — not a commitment.
+
+## Completed sub-projects (for reference)
+
+These were previously listed here but have been implemented:
+
+- **FreeType font rendering** — DONE (2026-04-09, `themes-and-fonts` branch). Inter (UI) + JetBrains Mono (numerics) via `IMGUI_ENABLE_FREETYPE`. Lekton fonts deleted.
+- **Runtime theme system with base16 YAML loader** — DONE (2026-04-09, `themes-and-fonts` branch). 8 built-in schemes, drop-in user themes from tinted-theming, Theme menu in menu bar, persistence in ui.dat.
+- **Submodule modernization** — DONE (2026-04-09, `m1-modernization` branch). imgui→ocornut v1.92.7, pffft→jpommier, lodepng bumped. osdialog deliberately held for zenity sub-project.
 
 Items are grouped by theme, not by priority. Priorities will be decided at the time a given sub-project is started.
 
@@ -14,9 +22,12 @@ The submodule upgrade migrates `ext/imgui` from a 2017-era snapshot to current u
 ### Tier 1 — low risk, high polish ("make it look modern")
 
 1. **Replace `tablabels.hpp` with native `BeginTabBar`/`BeginTabItem`.** The stock imgui tab API was added in v1.66 (2018). Gives: closeable tabs, reorderable tabs by drag, keyboard navigation, theme-consistent styling. Small visual upgrade, bigger UX upgrade.
-2. **Enable FreeType font rendering** (`imgui_freetype.cpp`). Replaces the default bitmap rasterizer with real subpixel anti-aliasing, hinting, and kerning. Fonts become noticeably sharper. Adds a libfreetype dependency (easy on all three platforms).
+2. ~~**Enable FreeType font rendering**~~ — **DONE** (see "Completed sub-projects" above).
 3. **Add an icon font** (Font Awesome Free or Material Design Icons via an icon-font header). Gives the effects rack and toolbars scannable icons instead of text-only buttons. No new runtime dependencies — just a font file and a header of Unicode code points.
-4. **Expanded theme system** building on OsirisEdit's dark/light foundation. Use `ImGui::ShowStyleEditor()` to design and ship 4-5 built-in themes (including at least one transparent variant) plus a user-editable/saveable custom theme. Directly addresses the "more color themes, maybe with transparency" wishlist from the original project brief.
+4. ~~**Expanded theme system**~~ — **DONE** (see "Completed sub-projects" above). Remaining follow-up: in-app theme editor with live preview using `ImGui::ShowStyleEditor()` — the data layer exists, this would add a polished UI on top.
+4a. **Split-label/value typography for sliders.** v1 wraps each whole `SliderFloat` in `PushFont(fontMono)`, rendering both label and value in monospace. The "gold-standard" approach is to refactor each into `Text(label)` + `SliderFloat(value-only-format)` so labels stay in proportional Inter and only numeric values go mono. ~15 call sites, each a small refactor.
+4b. **Per-theme font choice.** Themes currently control only colors, alpha, and style vars — not fonts. Adding per-theme fonts would require font-atlas rebuilding at runtime.
+4c. **Multiple font sizes / bold+italic variants.** Currently single Regular weight at 14px per family. Adding more is straightforward (`AddFontFromFileTTF` per size/weight) but grows the font atlas texture.
 
 ### Tier 2 — medium risk, medium payoff ("use stock widgets where custom was overkill")
 
@@ -104,7 +115,7 @@ From `2026-04-08-fork-research.md`, items not yet pulled in:
 - **OXIWave `playexport.cpp` state isolation.** Prevents UI-controlled morphs from glitching during render-to-WAV export. Generally useful.
 - **OXIWave / SphereEdit `loadWaves()` / `loadMultiWAVs()` / `exportMultiWAVs()`.** Batch WAV import/export workflow in `bank.cpp`. Useful for hardware preset distribution.
 - **OsirisEdit "Bank" → "Wavetable" UI terminology rename.** Cosmetic; clearer for non-E370 users. Decide alongside theme work.
-- **OsirisEdit dark/light theme system.** Already earmarked for the expanded theme sub-project above.
+- ~~**OsirisEdit dark/light theme system.**~~ Superseded by the base16 theme system (implemented 2026-04-09). OsirisEdit's dark/light toggle was the seed inspiration but the final implementation went much further with 8 base16 schemes + drop-in support.
 
 None of these are urgent; all can be cherry-picked individually in a dedicated fork-consolidation sub-project.
 

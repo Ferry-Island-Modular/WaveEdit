@@ -25,12 +25,13 @@ endif
 homebrew-deps:
 	@echo "Using Homebrew dependencies on macOS..."
 	@which brew > /dev/null || (echo "Error: Homebrew not found. Please install Homebrew first." && exit 1)
-	brew install sdl2 libsndfile libsamplerate
+	brew install sdl2 libsndfile libsamplerate freetype
 	@echo "Creating symlinks for compatibility..."
 	@mkdir -p lib include
 	@ln -sf $$(brew --prefix)/lib/libSDL2-2.0.0.dylib lib/ || true
 	@ln -sf $$(brew --prefix)/lib/libsndfile.1.dylib lib/ || true
 	@ln -sf $$(brew --prefix)/lib/libsamplerate.0.dylib lib/ || true
+	@ln -sf $$(brew --prefix freetype)/lib/libfreetype.6.dylib lib/ || true
 	@ln -sf $$(brew --prefix)/include/SDL2 include/ || true
 
 $(sdl2):

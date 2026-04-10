@@ -81,7 +81,6 @@ int main(int argc, char **argv) {
 	// Set up ImGui context and binding
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGui::StyleColorsDark();
 #ifdef ARCH_MAC
 	// Force-enable Mac behaviors (Cmd as the shortcut modifier, Mac-style text
 	// editing). Modern imgui defaults this to `defined(__APPLE__)` in the
