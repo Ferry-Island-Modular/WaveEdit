@@ -134,9 +134,9 @@ else ifneq (,$(filter $(ARCH),mac mac_arm64))
 else ifeq ($(ARCH),win)
 	cp -R logo*.png fonts catalog themes dist/WaveEdit
 	cp WaveEdit.exe dist/WaveEdit
-	cp /mingw32/bin/libgcc_s_dw2-1.dll dist/WaveEdit
-	cp /mingw32/bin/libwinpthread-1.dll dist/WaveEdit
-	cp /mingw32/bin/libstdc++-6.dll dist/WaveEdit
+	cp /mingw64/bin/libgcc_s_seh-1.dll dist/WaveEdit
+	cp /mingw64/bin/libwinpthread-1.dll dist/WaveEdit
+	cp /mingw64/bin/libstdc++-6.dll dist/WaveEdit
 	cp dep/bin/SDL2.dll dist/WaveEdit
 	cp dep/bin/libsamplerate-0.dll dist/WaveEdit
 	cp dep/bin/libsndfile-1.dll dist/WaveEdit
