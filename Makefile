@@ -36,7 +36,7 @@ SOURCES = \
 include Makefile-arch.inc
 ifeq ($(ARCH),lin)
 	# Linux
-	FLAGS += -DARCH_LIN $(shell pkg-config --cflags gtk+-2.0) $(shell pkg-config --cflags freetype2)
+	FLAGS += -DARCH_LIN $(shell pkg-config --cflags gtk+-2.0) $(shell pkg-config --cflags freetype2) $(shell pkg-config --cflags sdl2)
 	LDFLAGS += -static-libstdc++ -static-libgcc \
 		-lGL -lpthread \
 		-Ldep/lib -lSDL2 -lsamplerate -lsndfile \
@@ -63,7 +63,7 @@ ifeq ($(ARCH),mac_arm64)
 endif
 else ifeq ($(ARCH),win)
 	# Windows
-	FLAGS += -DARCH_WIN -I/mingw64/include/freetype2
+	FLAGS += -DARCH_WIN -I/mingw64/include/freetype2 -I/mingw64/include/SDL2
 	LDFLAGS += \
 		-Ldep/lib -lmingw32 -lSDL2main -lSDL2 -lsamplerate -lsndfile \
 		-lopengl32 -mwindows -lfreetype
@@ -134,9 +134,9 @@ else ifneq (,$(filter $(ARCH),mac mac_arm64))
 else ifeq ($(ARCH),win)
 	cp -R logo*.png fonts catalog themes dist/WaveEdit
 	cp WaveEdit.exe dist/WaveEdit
-	cp /mingw32/bin/libgcc_s_dw2-1.dll dist/WaveEdit
-	cp /mingw32/bin/libwinpthread-1.dll dist/WaveEdit
-	cp /mingw32/bin/libstdc++-6.dll dist/WaveEdit
+	cp /mingw64/bin/libgcc_s_seh-1.dll dist/WaveEdit
+	cp /mingw64/bin/libwinpthread-1.dll dist/WaveEdit
+	cp /mingw64/bin/libstdc++-6.dll dist/WaveEdit
 	cp dep/bin/SDL2.dll dist/WaveEdit
 	cp dep/bin/libsamplerate-0.dll dist/WaveEdit
 	cp dep/bin/libsndfile-1.dll dist/WaveEdit
