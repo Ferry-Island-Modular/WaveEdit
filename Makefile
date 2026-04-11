@@ -131,6 +131,10 @@ else ifneq (,$(filter $(ARCH),mac mac_arm64))
 	cp $(shell brew --prefix freetype)/lib/libfreetype.6.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
 	install_name_tool -change $(shell brew --prefix freetype)/lib/libfreetype.6.dylib @executable_path/libfreetype.6.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
 	otool -L dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
+	# Re-sign the app bundle after install_name_tool modified the binary.
+	# Without this, macOS reports "damaged and can't be opened" because
+	# install_name_tool invalidates the ad-hoc signature that clang created.
+	codesign --force --deep --sign - dist/WaveEdit/WaveEdit.app
 else ifeq ($(ARCH),win)
 	cp -R logo*.png fonts catalog themes dist/WaveEdit
 	cp WaveEdit.exe dist/WaveEdit
