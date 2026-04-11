@@ -1,0 +1,151 @@
+name: build
+
+on:
+  push:
+    branches: [master, main]
+    tags: ['v*']
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: lin
+            runner: ubuntu-22.04
+          - arch: mac_arm64
+            runner: macos-15
+          - arch: win
+            runner: windows-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Linux toolchain + deps
+        if: matrix.arch == 'lin'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libgtk2.0-dev libfreetype6-dev \
+            libsdl2-dev libsndfile1-dev libsamplerate0-dev wget zip
+
+      - name: Install macOS deps via Homebrew
+        if: matrix.arch == 'mac_arm64'
+        run: |
+          brew install sdl2 libsamplerate libsndfile freetype
+
+      - name: Set up MSYS2 (Windows)
+        if: matrix.arch == 'win'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-freetype
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-libsndfile
+            mingw-w64-x86_64-libsamplerate
+            make
+            wget
+            tar
+            zip
+            unzip
+
+      - name: Build dep/ (macOS only)
+        if: matrix.arch == 'mac_arm64'
+        run: |
+          cd dep && make
+
+      - name: Build WaveEdit (Linux + macOS)
+        if: matrix.arch != 'win'
+        run: |
+          make
+
+      - name: Verify binary (Linux + macOS)
+        if: matrix.arch != 'win'
+        run: |
+          test -x WaveEdit
+          file WaveEdit
+
+      - name: Populate dep/lib with system libraries (Linux)
+        if: matrix.arch == 'lin'
+        run: |
+          mkdir -p dep/lib
+          LIBDIR=$(pkg-config --variable=libdir sdl2)
+          ln -sf $LIBDIR/libSDL2-2.0.so.0 dep/lib/
+          ln -sf $(pkg-config --variable=libdir samplerate)/libsamplerate.so.0 dep/lib/
+          ln -sf $(pkg-config --variable=libdir sndfile)/libsndfile.so.1 dep/lib/
+
+      - name: Build dist zip (Linux + macOS)
+        if: matrix.arch != 'win'
+        run: |
+          make dist
+
+      - name: Build WaveEdit (Windows)
+        if: matrix.arch == 'win'
+        shell: msys2 {0}
+        run: |
+          make ARCH=win
+
+      - name: Verify binary (Windows)
+        if: matrix.arch == 'win'
+        shell: msys2 {0}
+        run: |
+          test -x WaveEdit.exe
+          file WaveEdit.exe
+
+      - name: Populate dep/bin with system DLLs (Windows)
+        if: matrix.arch == 'win'
+        shell: msys2 {0}
+        run: |
+          mkdir -p dep/bin
+          cp /mingw64/bin/SDL2.dll dep/bin/
+          cp /mingw64/bin/libsamplerate-0.dll dep/bin/
+          cp /mingw64/bin/libsndfile-1.dll dep/bin/
+
+      - name: Build dist zip (Windows)
+        if: matrix.arch == 'win'
+        shell: msys2 {0}
+        run: |
+          make dist
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WaveEdit-${{ matrix.arch }}
+          path: dist/WaveEdit-*.zip
+          retention-days: 30
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout (for release notes generation)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --draft \
+            --generate-notes \
+            --title "${{ github.ref_name }}" \
+            artifacts/*/WaveEdit-*.zip
