@@ -31,8 +31,8 @@ jobs:
         if: matrix.arch == 'lin'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libfreetype6-dev libsdl2-dev \
-            libsndfile1-dev libsamplerate0-dev wget zip zenity
+          sudo apt-get install -y build-essential desktop-file-utils pkg-config libfreetype6-dev \
+            libsdl2-dev libsndfile1-dev libsamplerate0-dev wget zip zenity xvfb
 
       - name: Install macOS deps via Homebrew
         if: matrix.arch == 'mac_arm64'
@@ -93,6 +93,35 @@ jobs:
         run: |
           make dist
 
+      - name: Download verified linuxdeploy (Linux)
+        if: matrix.arch == 'lin'
+        run: |
+          wget -q \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
+            -O linuxdeploy-x86_64.AppImage
+          echo "e87ee0815d109282fdda73e34c2361d64d02b0ffaea3674b18f1fd1f6a687dcf  linuxdeploy-x86_64.AppImage" \
+            | sha256sum -c -
+          chmod +x linuxdeploy-x86_64.AppImage
+
+      - name: Build AppImage (Linux)
+        if: matrix.arch == 'lin'
+        run: |
+          desktop-file-validate packaging/linux/waveedit.desktop
+          make appimage LINUXDEPLOY=./linuxdeploy-x86_64.AppImage
+          test -x dist/WaveEdit-*-x86_64.AppImage
+
+      - name: Smoke-test AppImage (Linux)
+        if: matrix.arch == 'lin'
+        run: |
+          set +e
+          timeout 5s env APPIMAGE_EXTRACT_AND_RUN=1 SDL_AUDIODRIVER=dummy \
+            xvfb-run -a dist/WaveEdit-*-x86_64.AppImage > appimage-smoke.log 2>&1
+          status=$?
+          set -e
+          cat appimage-smoke.log
+          test "$status" -eq 124
+          grep -F "theme: loaded 8 theme(s)" appimage-smoke.log
+
       - name: Build WaveEdit (Windows)
         if: matrix.arch == 'win'
         shell: msys2 {0}
@@ -125,7 +154,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: WaveEdit-${{ matrix.arch }}
-          path: dist/WaveEdit-*.zip
+          path: |
+            dist/WaveEdit-*.zip
+            dist/WaveEdit-*.AppImage
           retention-days: 30
 
   release:

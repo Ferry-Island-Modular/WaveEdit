@@ -11,6 +11,7 @@ These were previously listed here but have been implemented:
 - **Runtime theme system with base16 YAML loader** — DONE (2026-04-09, `themes-and-fonts` branch). 8 built-in schemes, drop-in user themes from tinted-theming, Theme menu in menu bar, persistence in ui.dat.
 - **Initial submodule modernization** — DONE (2026-04-09, `m1-modernization` branch). imgui→ocornut v1.92.7, pffft→jpommier, and lodepng bumped; osdialog was deliberately held for the later Zenity sub-project.
 - **Zenity dialog backend for Linux** — DONE (2026-07-26, `linux-zenity-dialogs` branch). Bumped osdialog to current upstream, adopted its shared source, replaced the GTK2 backend with Zenity, and removed the GTK2 build dependency.
+- **AppImage packaging for Linux** — DONE (2026-07-26, `linux-zenity-dialogs` branch). Added a linuxdeploy-based AppImage target, desktop integration metadata, dependency bundling, and a headless CI smoke test.
 
 Items are grouped by theme, not by priority. Priorities will be decided at the time a given sub-project is started.
 
@@ -48,16 +49,15 @@ The submodule upgrade migrates `ext/imgui` from a 2017-era snapshot to current u
 
 ### Deferred from the CI design spec (`2026-04-08-ci-build-design.md`)
 
-1. **AppImage packaging for Linux.** True portable Linux distribution that runs on any glibc-recent distro without external deps. Adds an `appimagetool` step to CI.
-2. **macOS universal binary.** Single `.app` that runs natively on both Intel and Apple Silicon. Currently impossible because Homebrew can't provide both arches side-by-side. Requires switching macOS dep handling from Homebrew to source-built via `dep/Makefile` (same approach Linux/Windows use), then compiling with `-arch arm64 -arch x86_64`. Would restore Intel mac to the CI matrix without paying for `-large` runners.
-3. **Code-signing and notarization.** macOS requires an Apple Developer account ($99/year) plus secrets in GitHub Actions. Windows code-signing requires a cert and provisioning. Both are money + bureaucracy commitments. Payoff: users don't hit Gatekeeper / SmartScreen warnings on first launch.
-4. **CMake migration.** Larger refactor of the build system. Would enable MSVC Windows builds, simplify CI, and make the project more approachable to new contributors. No immediate user-visible benefit; defer until a concrete trigger (usually MSVC for codesigning, or cross-compilation for universal binary).
-5. **MSVC build for Windows.** Cleaner Windows ABI, no MinGW runtime DLLs to ship, plays nicer with Windows codesigning. Requires either CMake or a `.sln` rewrite plus vcpkg for deps. Real risk of a long "fix the GCC-isms" debugging tail.
-6. **Smoke tests in CI.** Current CI only verifies the binary exists and reports the expected architecture. Real GUI smoke tests would need xvfb on Linux, audio-device emulation, and a test harness. Separate "make WaveEdit testable" sub-project.
+1. **macOS universal binary.** Single `.app` that runs natively on both Intel and Apple Silicon. Currently impossible because Homebrew can't provide both arches side-by-side. Requires switching macOS dep handling from Homebrew to source-built via `dep/Makefile` (same approach Linux/Windows use), then compiling with `-arch arm64 -arch x86_64`. Would restore Intel mac to the CI matrix without paying for `-large` runners.
+2. **Code-signing and notarization.** macOS requires an Apple Developer account ($99/year) plus secrets in GitHub Actions. Windows code-signing requires a cert and provisioning. Both are money + bureaucracy commitments. Payoff: users don't hit Gatekeeper / SmartScreen warnings on first launch.
+3. **CMake migration.** Larger refactor of the build system. Would enable MSVC Windows builds, simplify CI, and make the project more approachable to new contributors. No immediate user-visible benefit; defer until a concrete trigger (usually MSVC for codesigning, or cross-compilation for universal binary).
+4. **MSVC build for Windows.** Cleaner Windows ABI, no MinGW runtime DLLs to ship, plays nicer with Windows codesigning. Requires either CMake or a `.sln` rewrite plus vcpkg for deps. Real risk of a long "fix the GCC-isms" debugging tail.
+5. **Broader smoke tests in CI.** Linux now launches the AppImage under Xvfb with dummy audio and verifies that bundled resources load. Interaction-level coverage—opening dialogs, editing waves, exercising audio, and clean shutdown—still needs a test harness. Separate "make WaveEdit testable" sub-project.
 
 ### Supply chain
 
-7. **Vendor the submodules or switch to upstream-only.** Post-upgrade, `ext/imgui`, `ext/lodepng`, `ext/pffft` all point at third-party upstreams (one of which is on Bitbucket). Supply chain hardening options: vendor each into the main repo and drop the submodule machinery entirely, or maintain mirror forks under the same account as the WaveEdit fork itself. Decision point: how much do we value the "clean `git clone` just works with no submodule fetch" experience vs the "we're tracking upstream" experience.
+6. **Vendor the submodules or switch to upstream-only.** Post-upgrade, `ext/imgui`, `ext/lodepng`, `ext/pffft` all point at third-party upstreams (one of which is on Bitbucket). Supply chain hardening options: vendor each into the main repo and drop the submodule machinery entirely, or maintain mirror forks under the same account as the WaveEdit fork itself. Decision point: how much do we value the "clean `git clone` just works with no submodule fetch" experience vs the "we're tracking upstream" experience.
 
 ---
 
