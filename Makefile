@@ -21,6 +21,7 @@ LDFLAGS =
 SOURCES = \
 	ext/pffft/pffft.c \
 	ext/lodepng/lodepng.cpp \
+	ext/osdialog/osdialog.c \
 	ext/imgui/imgui.cpp \
 	ext/imgui/imgui_draw.cpp \
 	ext/imgui/imgui_demo.cpp \
@@ -36,13 +37,12 @@ SOURCES = \
 include Makefile-arch.inc
 ifeq ($(ARCH),lin)
 	# Linux
-	FLAGS += -DARCH_LIN $(shell pkg-config --cflags gtk+-2.0) $(shell pkg-config --cflags freetype2) $(shell pkg-config --cflags sdl2)
+	FLAGS += -DARCH_LIN $(shell pkg-config --cflags freetype2) $(shell pkg-config --cflags sdl2)
 	LDFLAGS += -static-libstdc++ -static-libgcc \
 		-lGL -lpthread \
 		-Ldep/lib -lSDL2 -lsamplerate -lsndfile \
-		-lgtk-x11-2.0 -lgobject-2.0 \
 		$(shell pkg-config --libs freetype2)
-	SOURCES += ext/osdialog/osdialog_gtk2.c
+	SOURCES += ext/osdialog/osdialog_zenity.c
 else ifneq (,$(filter $(ARCH),mac mac_arm64))
 	# Mac (Intel or Apple Silicon)
 	FLAGS += -DARCH_MAC \

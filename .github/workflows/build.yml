@@ -31,8 +31,8 @@ jobs:
         if: matrix.arch == 'lin'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libgtk2.0-dev libfreetype6-dev \
-            libsdl2-dev libsndfile1-dev libsamplerate0-dev wget zip
+          sudo apt-get install -y build-essential pkg-config libfreetype6-dev libsdl2-dev \
+            libsndfile1-dev libsamplerate0-dev wget zip zenity
 
       - name: Install macOS deps via Homebrew
         if: matrix.arch == 'mac_arm64'
@@ -73,6 +73,11 @@ jobs:
         run: |
           test -x WaveEdit
           file WaveEdit
+
+      - name: Verify Linux binary has no GTK dependency
+        if: matrix.arch == 'lin'
+        run: |
+          ! ldd WaveEdit | grep -i gtk
 
       - name: Populate dep/lib with system libraries (Linux)
         if: matrix.arch == 'lin'

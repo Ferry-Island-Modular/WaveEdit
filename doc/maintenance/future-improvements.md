@@ -1,6 +1,6 @@
 # Future Improvements Roadmap
 
-**Last updated:** 2026-04-10
+**Last updated:** 2026-07-26
 **Purpose:** Running index of sub-projects and improvements that have been **identified but explicitly deferred** during planning of other work. Each item here is a potential future brainstorm session — not a commitment.
 
 ## Completed sub-projects (for reference)
@@ -9,7 +9,8 @@ These were previously listed here but have been implemented:
 
 - **FreeType font rendering** — DONE (2026-04-09, `themes-and-fonts` branch). Inter (UI) + JetBrains Mono (numerics) via `IMGUI_ENABLE_FREETYPE`. Lekton fonts deleted.
 - **Runtime theme system with base16 YAML loader** — DONE (2026-04-09, `themes-and-fonts` branch). 8 built-in schemes, drop-in user themes from tinted-theming, Theme menu in menu bar, persistence in ui.dat.
-- **Submodule modernization** — DONE (2026-04-09, `m1-modernization` branch). imgui→ocornut v1.92.7, pffft→jpommier, lodepng bumped. osdialog deliberately held for zenity sub-project.
+- **Initial submodule modernization** — DONE (2026-04-09, `m1-modernization` branch). imgui→ocornut v1.92.7, pffft→jpommier, and lodepng bumped; osdialog was deliberately held for the later Zenity sub-project.
+- **Zenity dialog backend for Linux** — DONE (2026-07-26, `linux-zenity-dialogs` branch). Bumped osdialog to current upstream, adopted its shared source, replaced the GTK2 backend with Zenity, and removed the GTK2 build dependency.
 
 Items are grouped by theme, not by priority. Priorities will be decided at the time a given sub-project is started.
 
@@ -47,27 +48,16 @@ The submodule upgrade migrates `ext/imgui` from a 2017-era snapshot to current u
 
 ### Deferred from the CI design spec (`2026-04-08-ci-build-design.md`)
 
-1. **Zenity dialog backend for Linux + osdialog submodule bump.** Current Linux build depends on GTK2 at runtime, which is increasingly fragile on modern distros. `osdialog_zenity.c` calls out to whatever dialog tool exists at runtime, removing the GTK2 link entirely. **User has stated Linux should be first-class**, so this is a priority item.
-
-   **Status as of 2026-04-09:** upstream `AndrewBelt/osdialog` has already added `osdialog_zenity.c` as a first-class backend, restructured the library so `osdialog.c` is now a required shared source on all platforms, and renamed `osdialog_gtk2.c` → `osdialog_gtk.c` (unified gtk2/gtk3). The `ext/osdialog` submodule pin in this repo is **deliberately stale** at commit `e66caf0` to avoid mixing API-restructuring work into the submodule-upgrade sub-project.
-
-   **What this sub-project must do when picked up:**
-   - Bump `ext/osdialog` to current upstream (at the time of picking, check the current HEAD).
-   - Update `Makefile`: add `ext/osdialog/osdialog.c` to SOURCES unconditionally (required on all platforms now). Remove the Linux-specific `ext/osdialog/osdialog_gtk2.c` line and replace with `ext/osdialog/osdialog_zenity.c` (or `osdialog_gtk.c` if you want to keep GTK and defer zenity further — but zenity is the stated goal).
-   - Remove the `$(shell pkg-config --cflags gtk+-2.0)` and `-lgtk-x11-2.0 -lgobject-2.0` from the Linux `LDFLAGS` block since we no longer link GTK directly.
-   - Verify WaveEdit's existing synchronous `osdialog_file` / `osdialog_message` calls still compile against the new header (new `_async` variants added but sync functions appear unchanged — verify at the time).
-   - Update CI (once it exists): Linux job needs `zenity` installed in the apt step for runtime (in addition to the build-time deps).
-   - Regression-test interactively on Linux: file open/save dialogs, message boxes.
-2. **AppImage packaging for Linux.** True portable Linux distribution that runs on any glibc-recent distro without external deps. Adds an `appimagetool` step to CI.
-3. **macOS universal binary.** Single `.app` that runs natively on both Intel and Apple Silicon. Currently impossible because Homebrew can't provide both arches side-by-side. Requires switching macOS dep handling from Homebrew to source-built via `dep/Makefile` (same approach Linux/Windows use), then compiling with `-arch arm64 -arch x86_64`. Would restore Intel mac to the CI matrix without paying for `-large` runners.
-4. **Code-signing and notarization.** macOS requires an Apple Developer account ($99/year) plus secrets in GitHub Actions. Windows code-signing requires a cert and provisioning. Both are money + bureaucracy commitments. Payoff: users don't hit Gatekeeper / SmartScreen warnings on first launch.
-5. **CMake migration.** Larger refactor of the build system. Would enable MSVC Windows builds, simplify CI, and make the project more approachable to new contributors. No immediate user-visible benefit; defer until a concrete trigger (usually MSVC for codesigning, or cross-compilation for universal binary).
-6. **MSVC build for Windows.** Cleaner Windows ABI, no MinGW runtime DLLs to ship, plays nicer with Windows codesigning. Requires either CMake or a `.sln` rewrite plus vcpkg for deps. Real risk of a long "fix the GCC-isms" debugging tail.
-7. **Smoke tests in CI.** Current CI only verifies the binary exists and reports the expected architecture. Real GUI smoke tests would need xvfb on Linux, audio-device emulation, and a test harness. Separate "make WaveEdit testable" sub-project.
+1. **AppImage packaging for Linux.** True portable Linux distribution that runs on any glibc-recent distro without external deps. Adds an `appimagetool` step to CI.
+2. **macOS universal binary.** Single `.app` that runs natively on both Intel and Apple Silicon. Currently impossible because Homebrew can't provide both arches side-by-side. Requires switching macOS dep handling from Homebrew to source-built via `dep/Makefile` (same approach Linux/Windows use), then compiling with `-arch arm64 -arch x86_64`. Would restore Intel mac to the CI matrix without paying for `-large` runners.
+3. **Code-signing and notarization.** macOS requires an Apple Developer account ($99/year) plus secrets in GitHub Actions. Windows code-signing requires a cert and provisioning. Both are money + bureaucracy commitments. Payoff: users don't hit Gatekeeper / SmartScreen warnings on first launch.
+4. **CMake migration.** Larger refactor of the build system. Would enable MSVC Windows builds, simplify CI, and make the project more approachable to new contributors. No immediate user-visible benefit; defer until a concrete trigger (usually MSVC for codesigning, or cross-compilation for universal binary).
+5. **MSVC build for Windows.** Cleaner Windows ABI, no MinGW runtime DLLs to ship, plays nicer with Windows codesigning. Requires either CMake or a `.sln` rewrite plus vcpkg for deps. Real risk of a long "fix the GCC-isms" debugging tail.
+6. **Smoke tests in CI.** Current CI only verifies the binary exists and reports the expected architecture. Real GUI smoke tests would need xvfb on Linux, audio-device emulation, and a test harness. Separate "make WaveEdit testable" sub-project.
 
 ### Supply chain
 
-8. **Vendor the submodules or switch to upstream-only.** Post-upgrade, `ext/imgui`, `ext/lodepng`, `ext/pffft` all point at third-party upstreams (one of which is on Bitbucket). Supply chain hardening options: vendor each into the main repo and drop the submodule machinery entirely, or maintain mirror forks under the same account as the WaveEdit fork itself. Decision point: how much do we value the "clean `git clone` just works with no submodule fetch" experience vs the "we're tracking upstream" experience.
+7. **Vendor the submodules or switch to upstream-only.** Post-upgrade, `ext/imgui`, `ext/lodepng`, `ext/pffft` all point at third-party upstreams (one of which is on Bitbucket). Supply chain hardening options: vendor each into the main repo and drop the submodule machinery entirely, or maintain mirror forks under the same account as the WaveEdit fork itself. Decision point: how much do we value the "clean `git clone` just works with no submodule fetch" experience vs the "we're tracking upstream" experience.
 
 ---
 

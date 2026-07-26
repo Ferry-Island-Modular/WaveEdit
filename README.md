@@ -22,6 +22,8 @@ Launch the program.
 
 	./WaveEdit
 
+On Linux, native file dialogs require `zenity` to be available on `PATH`.
+
 You can even try your luck with building the polished distributable. Although this method is unsupported, it may work with some tweaks to the Makefile.
 
 	make dist
