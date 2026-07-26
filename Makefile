@@ -164,7 +164,7 @@ appimage: WaveEdit
 	cp -R banks catalog fonts themes $(APPIMAGE_DIR)/usr/share/waveedit
 	cp logo-dark.png logo-light.png doc/manual.pdf LICENSE* $(APPIMAGE_DIR)/usr/share/waveedit
 	cp packaging/linux/appimage-resource-dir.sh $(APPIMAGE_DIR)/apprun-hooks
-	OUTPUT=$(APPIMAGE_OUTPUT) VERSION=$(VERSION) $(LINUXDEPLOY) \
+	LDAI_OUTPUT=$(APPIMAGE_OUTPUT) LINUXDEPLOY_OUTPUT_VERSION=$(VERSION) $(LINUXDEPLOY) \
 		--appdir $(APPIMAGE_DIR) \
 		--executable $(APPIMAGE_DIR)/usr/bin/WaveEdit \
 		--desktop-file packaging/linux/waveedit.desktop \
