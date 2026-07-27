@@ -21,9 +21,6 @@
 
 #include "lodepng/lodepng.h"
 
-#include "tablabels.hpp"
-
-
 static bool showTestWindow = false;
 static ImTextureID logoTextureLight;
 static ImTextureID logoTextureDark;
@@ -45,6 +42,20 @@ enum Page {
 };
 
 Page currentPage = EDITOR_PAGE;
+
+struct PageTab {
+	Page page;
+	const char *label;
+};
+
+static const PageTab pageTabs[] = {
+	{EDITOR_PAGE, "Waveform Editor"},
+	{EFFECT_PAGE, "Effect Editor"},
+	{GRID_PAGE, "Grid XY View"},
+	{WATERFALL_PAGE, "Waterfall View"},
+	{IMPORT_PAGE, "Import"},
+};
+static_assert(sizeof(pageTabs) / sizeof(pageTabs[0]) == NUM_PAGES, "Page tabs must match Page enum");
 
 
 static ImVec4 lighten(ImVec4 col, float p) {
@@ -770,6 +781,27 @@ void waterfallPage() {
 	ImGui::EndChild();
 }
 
+static void renderPageTabs() {
+	const ImGuiTabBarFlags tabBarFlags =
+		ImGuiTabBarFlags_Reorderable |
+		ImGuiTabBarFlags_FittingPolicyScroll |
+		ImGuiTabBarFlags_DrawSelectedOverline;
+
+	if (ImGui::BeginTabBar("MainPages", tabBarFlags)) {
+		for (const PageTab &tab : pageTabs) {
+			ImGuiTabItemFlags tabFlags = ImGuiTabItemFlags_None;
+			if (currentPage == tab.page)
+				tabFlags |= ImGuiTabItemFlags_SetSelected;
+
+			if (ImGui::BeginTabItem(tab.label, NULL, tabFlags)) {
+				currentPage = tab.page;
+				ImGui::EndTabItem();
+			}
+		}
+		ImGui::EndTabBar();
+	}
+}
+
 
 void renderMain() {
 	ImGui::SetNextWindowPos(ImVec2(0, 0));
@@ -780,18 +812,7 @@ void renderMain() {
 		// Menu bar
 		renderMenu();
 		renderPreview();
-		// Tab bar
-		{
-			static const char *tabLabels[NUM_PAGES] = {
-				"Waveform Editor",
-				"Effect Editor",
-				"Grid XY View",
-				"Waterfall View",
-				"Import",
-			};
-			static int hoveredTab = 0;
-			ImGui::TabLabels(NUM_PAGES, tabLabels, (int*)&currentPage, NULL, false, &hoveredTab);
-		}
+		renderPageTabs();
 
 		// Page
 		// Reset some audio variables. These might be changed within the pages.
