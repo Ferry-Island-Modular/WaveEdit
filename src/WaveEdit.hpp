@@ -260,6 +260,7 @@ extern Bank *playingBank;
 
 int audioGetDeviceCount();
 const char *audioGetDeviceName(int deviceId);
+void audioSetFrequency(float frequency);
 void audioClose();
 void audioOpen(int deviceId);
 void audioInit();

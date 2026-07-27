@@ -474,6 +474,7 @@ void renderPreview() {
 	ImGui::SameLine();
 	ImGui::PushFont(fontMono);
 	ImGui::SliderFloat("##playFrequency", &playFrequency, 1.0f, 10000.0f, "Frequency: %.2f Hz", ImGuiSliderFlags_Logarithmic);
+	audioSetFrequency(playFrequency);
 	ImGui::PopFont();
 
 	ImGui::Checkbox("Morph Interpolate", &morphInterpolate);
