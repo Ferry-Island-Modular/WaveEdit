@@ -122,16 +122,9 @@ static void refreshMorphSnap() {
 	}
 }
 
-/** Focuses to a page which displays the current bank, useful when loading a new bank and showing the user some visual feedback that the bank has changed. */
-static void showCurrentBankPage() {
-	switch (currentPage) {
-		case EFFECT_PAGE:
-		case IMPORT_PAGE:
-			currentPage = EDITOR_PAGE;
-			break;
-		default:
-			break;
-	}
+/** Shows the primary editor after creating or opening a bank. */
+static void showWaveformEditor() {
+	currentPage = EDITOR_PAGE;
 }
 
 static void menuManual() {
@@ -143,7 +136,7 @@ static void menuWebsite() {
 }
 
 static void menuNewBank() {
-	showCurrentBankPage();
+	showWaveformEditor();
 	currentBank.clear();
 	lastFilename[0] = '\0';
 	historyPush();
@@ -166,7 +159,7 @@ static void menuOpenBank() {
 	char *dir = getLastDir();
 	char *path = osdialog_file(OSDIALOG_OPEN, dir, NULL, NULL);
 	if (path) {
-		showCurrentBankPage();
+		showWaveformEditor();
 		currentBank.loadWAV(path);
 		snprintf(lastFilename, sizeof(lastFilename), "%s", path);
 		historyPush();
@@ -374,30 +367,12 @@ void renderWaveMenu() {
 void renderMenu() {
 	menuKeyCommands();
 
-	// HACK
-	// Display a window on top of the menu with the logo, since I'm too lazy to make my own custom MenuImageItem widget
-	{
-		int width, height;
-		getImageSize(logoTexture, &width, &height);
-		ImVec2 padding = ImVec2(8, 4);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(0, 0));
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, padding);
-		ImGui::SetNextWindowPos(ImVec2(0, 0));
-		ImGui::SetNextWindowSize(ImVec2(width + 2 * padding.x, height + 2 * padding.y));
-		if (ImGui::Begin("Logo", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoInputs)) {
-			ImGui::Image(logoTexture, ImVec2(width, height));
-			ImGui::End();
-		}
-		ImGui::PopStyleVar();
-		ImGui::PopStyleVar();
-	}
-
 	// Draw main menu
 	if (ImGui::BeginMenuBar()) {
-		// This will be hidden by the window with the logo
-		if (ImGui::BeginMenu("                        v" TOSTRING(VERSION), false)) {
-			ImGui::EndMenu();
-		}
+		int logoWidth, logoHeight;
+		getImageSize(logoTexture, &logoWidth, &logoHeight);
+		ImGui::Image(logoTexture, ImVec2(logoWidth, logoHeight));
+
 		// File
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("New Bank", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+N" : "Ctrl+N"))
