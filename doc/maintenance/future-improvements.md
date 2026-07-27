@@ -1,6 +1,6 @@
 # Future Improvements Roadmap
 
-**Last updated:** 2026-07-26
+**Last updated:** 2026-07-27
 **Purpose:** Running index of sub-projects and improvements that have been **identified but explicitly deferred** during planning of other work. Each item here is a potential future brainstorm session — not a commitment.
 
 ## Completed sub-projects (for reference)
@@ -12,6 +12,7 @@ These were previously listed here but have been implemented:
 - **Initial submodule modernization** — DONE (2026-04-09, `m1-modernization` branch). imgui→ocornut v1.92.7, pffft→jpommier, and lodepng bumped; osdialog was deliberately held for the later Zenity sub-project.
 - **Zenity dialog backend for Linux** — DONE (2026-07-26, `linux-zenity-dialogs` branch). Bumped osdialog to current upstream, adopted its shared source, replaced the GTK2 backend with Zenity, and removed the GTK2 build dependency.
 - **AppImage packaging for Linux** — DONE (2026-07-26, `linux-zenity-dialogs` branch). Added a linuxdeploy-based AppImage target, desktop integration metadata, dependency bundling, and a headless CI smoke test.
+- **Native ImGui page tabs** — DONE (2026-07-27, `native-imgui-tabs` branch). Replaced the custom `tablabels.hpp` widget with a reorderable native tab bar that uses current theme styling and scrolls instead of crushing labels in narrow windows.
 
 Items are grouped by theme, not by priority. Priorities will be decided at the time a given sub-project is started.
 
@@ -23,7 +24,7 @@ The submodule upgrade migrates `ext/imgui` from a 2017-era snapshot to current u
 
 ### Tier 1 — low risk, high polish ("make it look modern")
 
-1. **Replace `tablabels.hpp` with native `BeginTabBar`/`BeginTabItem`.** The stock imgui tab API was added in v1.66 (2018). Gives: closeable tabs, reorderable tabs by drag, keyboard navigation, theme-consistent styling. Small visual upgrade, bigger UX upgrade.
+1. ~~**Replace `tablabels.hpp` with native `BeginTabBar`/`BeginTabItem`.**~~ — **DONE** (see "Completed sub-projects" above).
 2. ~~**Enable FreeType font rendering**~~ — **DONE** (see "Completed sub-projects" above).
 3. **Add an icon font** (Font Awesome Free or Material Design Icons via an icon-font header). Gives the effects rack and toolbars scannable icons instead of text-only buttons. No new runtime dependencies — just a font file and a header of Unicode code points.
 4. ~~**Expanded theme system**~~ — **DONE** (see "Completed sub-projects" above). Remaining follow-up: in-app theme editor with live preview using `ImGui::ShowStyleEditor()` — the data layer exists, this would add a polished UI on top.

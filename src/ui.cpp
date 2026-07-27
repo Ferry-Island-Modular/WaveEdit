@@ -21,9 +21,6 @@
 
 #include "lodepng/lodepng.h"
 
-#include "tablabels.hpp"
-
-
 static bool showTestWindow = false;
 static ImTextureID logoTextureLight;
 static ImTextureID logoTextureDark;
@@ -45,6 +42,20 @@ enum Page {
 };
 
 Page currentPage = EDITOR_PAGE;
+
+struct PageTab {
+	Page page;
+	const char *label;
+};
+
+static const PageTab pageTabs[] = {
+	{EDITOR_PAGE, "Waveform Editor"},
+	{EFFECT_PAGE, "Effect Editor"},
+	{GRID_PAGE, "Grid XY View"},
+	{WATERFALL_PAGE, "Waterfall View"},
+	{IMPORT_PAGE, "Import"},
+};
+static_assert(sizeof(pageTabs) / sizeof(pageTabs[0]) == NUM_PAGES, "Page tabs must match Page enum");
 
 
 static ImVec4 lighten(ImVec4 col, float p) {
@@ -111,16 +122,9 @@ static void refreshMorphSnap() {
 	}
 }
 
-/** Focuses to a page which displays the current bank, useful when loading a new bank and showing the user some visual feedback that the bank has changed. */
-static void showCurrentBankPage() {
-	switch (currentPage) {
-		case EFFECT_PAGE:
-		case IMPORT_PAGE:
-			currentPage = EDITOR_PAGE;
-			break;
-		default:
-			break;
-	}
+/** Shows the primary editor after creating or opening a bank. */
+static void showWaveformEditor() {
+	currentPage = EDITOR_PAGE;
 }
 
 static void menuManual() {
@@ -132,7 +136,7 @@ static void menuWebsite() {
 }
 
 static void menuNewBank() {
-	showCurrentBankPage();
+	showWaveformEditor();
 	currentBank.clear();
 	lastFilename[0] = '\0';
 	historyPush();
@@ -155,7 +159,7 @@ static void menuOpenBank() {
 	char *dir = getLastDir();
 	char *path = osdialog_file(OSDIALOG_OPEN, dir, NULL, NULL);
 	if (path) {
-		showCurrentBankPage();
+		showWaveformEditor();
 		currentBank.loadWAV(path);
 		snprintf(lastFilename, sizeof(lastFilename), "%s", path);
 		historyPush();
@@ -363,30 +367,19 @@ void renderWaveMenu() {
 void renderMenu() {
 	menuKeyCommands();
 
-	// HACK
-	// Display a window on top of the menu with the logo, since I'm too lazy to make my own custom MenuImageItem widget
-	{
-		int width, height;
-		getImageSize(logoTexture, &width, &height);
-		ImVec2 padding = ImVec2(8, 4);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(0, 0));
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, padding);
-		ImGui::SetNextWindowPos(ImVec2(0, 0));
-		ImGui::SetNextWindowSize(ImVec2(width + 2 * padding.x, height + 2 * padding.y));
-		if (ImGui::Begin("Logo", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoInputs)) {
-			ImGui::Image(logoTexture, ImVec2(width, height));
-			ImGui::End();
-		}
-		ImGui::PopStyleVar();
-		ImGui::PopStyleVar();
-	}
-
 	// Draw main menu
 	if (ImGui::BeginMenuBar()) {
-		// This will be hidden by the window with the logo
-		if (ImGui::BeginMenu("                        v" TOSTRING(VERSION), false)) {
-			ImGui::EndMenu();
-		}
+		int logoWidth, logoHeight;
+		getImageSize(logoTexture, &logoWidth, &logoHeight);
+		float logoSlotHeight = ImGui::GetFrameHeight();
+		ImVec2 logoSlotMin = ImGui::GetCursorScreenPos();
+		ImGui::Dummy(ImVec2(logoWidth, logoSlotHeight));
+		float logoY = logoSlotMin.y + (logoSlotHeight - logoHeight) / 2.0f;
+		ImGui::GetWindowDrawList()->AddImage(
+			logoTexture,
+			ImVec2(logoSlotMin.x, logoY),
+			ImVec2(logoSlotMin.x + logoWidth, logoY + logoHeight));
+
 		// File
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("New Bank", ImGui::GetIO().ConfigMacOSXBehaviors ? "Cmd+N" : "Ctrl+N"))
@@ -770,6 +763,36 @@ void waterfallPage() {
 	ImGui::EndChild();
 }
 
+static void renderPageTabs() {
+	const ImGuiTabBarFlags tabBarFlags =
+		ImGuiTabBarFlags_Reorderable |
+		ImGuiTabBarFlags_FittingPolicyScroll |
+		ImGuiTabBarFlags_DrawSelectedOverline;
+	static Page selectedTabPage = currentPage;
+	const Page requestedPage = currentPage;
+	const bool selectionRequested = requestedPage != selectedTabPage;
+	Page visiblePage = selectedTabPage;
+
+	if (ImGui::BeginTabBar("MainPages", tabBarFlags)) {
+		for (const PageTab &tab : pageTabs) {
+			ImGuiTabItemFlags tabFlags = ImGuiTabItemFlags_None;
+			if (selectionRequested && requestedPage == tab.page)
+				tabFlags |= ImGuiTabItemFlags_SetSelected;
+
+			if (ImGui::BeginTabItem(tab.label, NULL, tabFlags)) {
+				visiblePage = tab.page;
+				ImGui::EndTabItem();
+			}
+		}
+		ImGui::EndTabBar();
+	}
+
+	// Mouse selection belongs to ImGui. Only override it when another part of
+	// WaveEdit requested a page change (for example, the 1-5 shortcuts).
+	selectedTabPage = selectionRequested ? requestedPage : visiblePage;
+	currentPage = selectedTabPage;
+}
+
 
 void renderMain() {
 	ImGui::SetNextWindowPos(ImVec2(0, 0));
@@ -780,18 +803,7 @@ void renderMain() {
 		// Menu bar
 		renderMenu();
 		renderPreview();
-		// Tab bar
-		{
-			static const char *tabLabels[NUM_PAGES] = {
-				"Waveform Editor",
-				"Effect Editor",
-				"Grid XY View",
-				"Waterfall View",
-				"Import",
-			};
-			static int hoveredTab = 0;
-			ImGui::TabLabels(NUM_PAGES, tabLabels, (int*)&currentPage, NULL, false, &hoveredTab);
-		}
+		renderPageTabs();
 
 		// Page
 		// Reset some audio variables. These might be changed within the pages.
