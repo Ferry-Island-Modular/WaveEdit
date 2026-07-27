@@ -2,8 +2,6 @@
 
 #include <math.h>
 #include <stdio.h>
-#include <unistd.h>
-
 #include <memory>
 
 struct LegacyWave {
@@ -44,22 +42,17 @@ int main() {
 	assert(!bank->setWaveLength(300));
 
 	assert(bank->setWaveLength(2048));
-	char statePath[] = "/tmp/waveedit-state-XXXXXX";
-	int stateFd = mkstemp(statePath);
-	assert(stateFd >= 0);
-	close(stateFd);
+	const char *statePath = "build/tests/variable-wave-width-state.dat";
 	bank->save(statePath);
 
 	std::unique_ptr<Bank> restored(new Bank);
 	restored->load(statePath);
 	assert(restored->waveLength == 2048);
 	assert(fabsf(restored->waves[0].samples[512] - 1.0f) < 0.02f);
-	unlink(statePath);
+	remove(statePath);
 
-	char legacyPath[] = "/tmp/waveedit-legacy-XXXXXX";
-	int legacyFd = mkstemp(legacyPath);
-	assert(legacyFd >= 0);
-	FILE *legacyFile = fdopen(legacyFd, "wb");
+	const char *legacyPath = "build/tests/variable-wave-width-legacy.dat";
+	FILE *legacyFile = fopen(legacyPath, "wb");
 	assert(legacyFile);
 	std::unique_ptr<LegacyBank> legacy(new LegacyBank());
 	legacy->waves[0].samples[DEFAULT_WAVE_LEN / 4] = 1.0f;
@@ -73,21 +66,18 @@ int main() {
 	assert(restored->waves[0].samples[DEFAULT_WAVE_LEN / 4] == 1.0f);
 	assert(restored->waves[0].effects[PRE_GAIN] == 0.25f);
 	assert(restored->waves[0].cycle);
-	unlink(legacyPath);
+	remove(legacyPath);
 
 	assert(restored->setWaveLength(2048));
 	fillSine(restored->waves[0]);
-	char wavPath[] = "/tmp/waveedit-bank-XXXXXX";
-	int wavFd = mkstemp(wavPath);
-	assert(wavFd >= 0);
-	close(wavFd);
+	const char *wavPath = "build/tests/variable-wave-width-bank.wav";
 	restored->saveWAV(wavPath);
 
 	std::unique_ptr<Bank> reopened(new Bank);
 	reopened->loadWAV(wavPath);
 	assert(reopened->waveLength == 2048);
 	assert(fabsf(reopened->waves[0].samples[512] - 1.0f) < 0.03f);
-	unlink(wavPath);
+	remove(wavPath);
 
 	printf("variable wave width tests passed\n");
 	return 0;
