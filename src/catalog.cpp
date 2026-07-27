@@ -97,12 +97,12 @@ void catalogInit() {
 			int length;
 			float *samples = loadAudio(filePath, &length);
 			if (samples) {
-				if (length == WAVE_LEN) {
-					memcpy(catalogFile.samples, samples, sizeof(float) * WAVE_LEN);
+				if (length > 0 && length <= MAX_WAVE_LEN) {
+					catalogFile.samples.assign(samples, samples + length);
 					catalogCategory.files.push_back(catalogFile);
 				}
 				else {
-					printf("%s has length %d but needs %d\n", filePath, length, WAVE_LEN);
+					printf("%s has unsupported length %d\n", filePath, length);
 				}
 				delete[] samples;
 			}

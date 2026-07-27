@@ -74,6 +74,11 @@ jobs:
           test -x WaveEdit
           file WaveEdit
 
+      - name: Test variable wave widths (Linux + macOS)
+        if: matrix.arch != 'win'
+        run: |
+          make test-wave-width
+
       - name: Verify Linux binary has no GTK dependency
         if: matrix.arch == 'lin'
         run: |
@@ -134,6 +139,12 @@ jobs:
         run: |
           test -x WaveEdit.exe
           file WaveEdit.exe
+
+      - name: Test variable wave widths (Windows)
+        if: matrix.arch == 'win'
+        shell: msys2 {0}
+        run: |
+          make ARCH=win test-wave-width
 
       - name: Populate dep/bin with system DLLs (Windows)
         if: matrix.arch == 'win'

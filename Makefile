@@ -20,6 +20,7 @@ endif
 CFLAGS =
 CXXFLAGS = -std=c++11
 LDFLAGS =
+TEST_LDFLAGS =
 
 
 SOURCES = \
@@ -46,6 +47,7 @@ ifeq ($(ARCH),lin)
 		-lGL -lpthread \
 		-Ldep/lib -lSDL2 -lsamplerate -lsndfile \
 		$(shell pkg-config --libs freetype2)
+	TEST_LDFLAGS += -Ldep/lib -lsamplerate -lsndfile
 	SOURCES += ext/osdialog/osdialog_zenity.c
 else ifneq (,$(filter $(ARCH),mac mac_arm64))
 	# Mac (Intel or Apple Silicon)
@@ -61,6 +63,9 @@ else ifneq (,$(filter $(ARCH),mac mac_arm64))
 		$(shell brew --prefix libsamplerate)/lib/libsamplerate.0.dylib \
 		$(shell brew --prefix libsndfile)/lib/libsndfile.1.dylib \
 		$(shell brew --prefix freetype)/lib/libfreetype.6.dylib
+	TEST_LDFLAGS += \
+		$(shell brew --prefix libsamplerate)/lib/libsamplerate.0.dylib \
+		$(shell brew --prefix libsndfile)/lib/libsndfile.1.dylib
 	SOURCES += ext/osdialog/osdialog_mac.m
 ifeq ($(ARCH),mac_arm64)
 	FLAGS += -DARCH_ARM64
@@ -71,6 +76,7 @@ else ifeq ($(ARCH),win)
 	LDFLAGS += \
 		-Ldep/lib -lmingw32 -lSDL2main -lSDL2 -lsamplerate -lsndfile \
 		-lopengl32 -mwindows -lfreetype
+	TEST_LDFLAGS += -lsamplerate -lsndfile -lshell32
 	SOURCES += ext/osdialog/osdialog_win.c
 	OBJECTS += info.o
 info.o: info.rc
@@ -101,6 +107,20 @@ OBJECTS += $(SOURCES:%=build/%.o)
 
 WaveEdit: $(OBJECTS)
 	$(CXX) -o $@ $^ $(LDFLAGS)
+
+WAVE_WIDTH_TEST = build/tests/variable_wave_width
+WAVE_WIDTH_TEST_OBJECTS = \
+	build/tests/variable_wave_width.cpp.o \
+	build/src/bank.cpp.o \
+	build/src/math.cpp.o \
+	build/src/util.cpp.o \
+	build/src/wave.cpp.o \
+	build/ext/pffft/pffft.c.o
+
+.PHONY: test-wave-width
+test-wave-width: $(WAVE_WIDTH_TEST_OBJECTS)
+	$(CXX) -o $(WAVE_WIDTH_TEST) $^ $(TEST_LDFLAGS)
+	./$(WAVE_WIDTH_TEST)
 
 clean:
 	rm -frv $(OBJECTS) WaveEdit dist

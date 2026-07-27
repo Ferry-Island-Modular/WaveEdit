@@ -25,6 +25,7 @@ static SRC_STATE *audioSrc = NULL;
 
 long srcCallback(void *cb_data, float **data) {
 	float gain = powf(10.0, playVolume / 20.0);
+	int waveLength = playingBank->waveLength;
 	// Generate next samples
 	const int inLen = 64;
 	static float in[inLen];
@@ -42,7 +43,7 @@ long srcCallback(void *cb_data, float **data) {
 			morphZSmooth = roundf(morphZ);
 		}
 
-		int index = (playIndex + i) % WAVE_LEN;
+		int index = (playIndex + i) % waveLength;
 		if (playModeXY) {
 			// Morph XY
 			int xi = morphXSmooth;
@@ -73,7 +74,7 @@ long srcCallback(void *cb_data, float **data) {
 	}
 
 	playIndex += inLen;
-	playIndex %= WAVE_LEN;
+	playIndex %= waveLength;
 
 	*data = in;
 	return inLen;
@@ -89,7 +90,7 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
 		const float lambdaFrequency = 0.5;
 		playFrequency = clampf(playFrequency, 1.0, 10000.0);
 		playFrequencySmooth = powf(playFrequencySmooth, 1.0 - lambdaFrequency) * powf(playFrequency, lambdaFrequency);
-		double ratio = (double)audioSpec.freq / WAVE_LEN / playFrequencySmooth;
+		double ratio = (double)audioSpec.freq / playingBank->waveLength / playFrequencySmooth;
 
 		src_callback_read(audioSrc, ratio, outLen, out);
 
