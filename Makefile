@@ -1,5 +1,9 @@
 VERSION = 1.2.0
 
+LINUXDEPLOY ?= linuxdeploy-x86_64.AppImage
+APPIMAGE_DIR = dist/WaveEdit.AppDir
+APPIMAGE_OUTPUT = dist/WaveEdit-$(VERSION)-x86_64.AppImage
+
 FLAGS = -Wall -Wextra -Wno-unused-parameter -g -Wno-unused -O3 -ffast-math \
 	-DVERSION=$(VERSION) -DPFFFT_SIMD_DISABLE \
 	-DIMGUI_USER_CONFIG=\"src/imconfig_user.h\" \
@@ -21,6 +25,7 @@ LDFLAGS =
 SOURCES = \
 	ext/pffft/pffft.c \
 	ext/lodepng/lodepng.cpp \
+	ext/osdialog/osdialog.c \
 	ext/imgui/imgui.cpp \
 	ext/imgui/imgui_draw.cpp \
 	ext/imgui/imgui_demo.cpp \
@@ -36,13 +41,12 @@ SOURCES = \
 include Makefile-arch.inc
 ifeq ($(ARCH),lin)
 	# Linux
-	FLAGS += -DARCH_LIN $(shell pkg-config --cflags gtk+-2.0) $(shell pkg-config --cflags freetype2) $(shell pkg-config --cflags sdl2)
+	FLAGS += -DARCH_LIN $(shell pkg-config --cflags freetype2) $(shell pkg-config --cflags sdl2)
 	LDFLAGS += -static-libstdc++ -static-libgcc \
 		-lGL -lpthread \
 		-Ldep/lib -lSDL2 -lsamplerate -lsndfile \
-		-lgtk-x11-2.0 -lgobject-2.0 \
 		$(shell pkg-config --libs freetype2)
-	SOURCES += ext/osdialog/osdialog_gtk2.c
+	SOURCES += ext/osdialog/osdialog_zenity.c
 else ifneq (,$(filter $(ARCH),mac mac_arm64))
 	# Mac (Intel or Apple Silicon)
 	FLAGS += -DARCH_MAC \
@@ -147,6 +151,29 @@ else ifeq ($(ARCH),win)
 	cp /mingw64/bin/libfreetype-6.dll dist/WaveEdit
 endif
 	cd dist && zip -9 -r WaveEdit-$(VERSION)-$(ARCH).zip WaveEdit
+
+
+.PHONY: appimage
+ifeq ($(ARCH),lin)
+appimage: WaveEdit
+	rm -rf $(APPIMAGE_DIR) $(APPIMAGE_OUTPUT)
+	mkdir -p $(APPIMAGE_DIR)/usr/bin
+	mkdir -p $(APPIMAGE_DIR)/usr/share/waveedit
+	mkdir -p $(APPIMAGE_DIR)/apprun-hooks
+	cp WaveEdit $(APPIMAGE_DIR)/usr/bin
+	cp -R banks catalog fonts themes $(APPIMAGE_DIR)/usr/share/waveedit
+	cp logo-dark.png logo-light.png doc/manual.pdf LICENSE* $(APPIMAGE_DIR)/usr/share/waveedit
+	cp packaging/linux/appimage-resource-dir.sh $(APPIMAGE_DIR)/apprun-hooks
+	LDAI_OUTPUT=$(APPIMAGE_OUTPUT) LINUXDEPLOY_OUTPUT_VERSION=$(VERSION) $(LINUXDEPLOY) \
+		--appdir $(APPIMAGE_DIR) \
+		--executable $(APPIMAGE_DIR)/usr/bin/WaveEdit \
+		--desktop-file packaging/linux/waveedit.desktop \
+		--icon-file packaging/linux/waveedit.png \
+		--output appimage
+else
+appimage:
+	$(error AppImage packaging requires ARCH=lin)
+endif
 
 
 # SUFFIXES:

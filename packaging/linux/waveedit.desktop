@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=WaveEdit
+Comment=Wavetable and bank editor for Synthesis Technology E370 and E352
+Exec=WaveEdit
+Icon=waveedit
+Categories=AudioVideo;Audio;
+Terminal=false
