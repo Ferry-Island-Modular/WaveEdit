@@ -786,20 +786,29 @@ static void renderPageTabs() {
 		ImGuiTabBarFlags_Reorderable |
 		ImGuiTabBarFlags_FittingPolicyScroll |
 		ImGuiTabBarFlags_DrawSelectedOverline;
+	static Page selectedTabPage = currentPage;
+	const Page requestedPage = currentPage;
+	const bool selectionRequested = requestedPage != selectedTabPage;
+	Page visiblePage = selectedTabPage;
 
 	if (ImGui::BeginTabBar("MainPages", tabBarFlags)) {
 		for (const PageTab &tab : pageTabs) {
 			ImGuiTabItemFlags tabFlags = ImGuiTabItemFlags_None;
-			if (currentPage == tab.page)
+			if (selectionRequested && requestedPage == tab.page)
 				tabFlags |= ImGuiTabItemFlags_SetSelected;
 
 			if (ImGui::BeginTabItem(tab.label, NULL, tabFlags)) {
-				currentPage = tab.page;
+				visiblePage = tab.page;
 				ImGui::EndTabItem();
 			}
 		}
 		ImGui::EndTabBar();
 	}
+
+	// Mouse selection belongs to ImGui. Only override it when another part of
+	// WaveEdit requested a page change (for example, the 1-5 shortcuts).
+	selectedTabPage = selectionRequested ? requestedPage : visiblePage;
+	currentPage = selectedTabPage;
 }
 
 
