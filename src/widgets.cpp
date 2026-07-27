@@ -8,19 +8,28 @@
 
 static void drawGrid(ImRect inner, int len) {
 	ImGuiWindow *window = ImGui::GetCurrentWindow();
-	// Compute number of points to skip, should be a power of 2
-	int skip;
+	// Compute grid spacing as a power of 2.
+	int gridSkip = 1;
 	for (int j = 0; j < 20; j++) {
-		skip = 1 << j;
-		float skipX = (inner.Max.x - inner.Min.x) / len * skip;
+		gridSkip = 1 << j;
+		float skipX = (inner.Max.x - inner.Min.x) / len * gridSkip;
 		if (fabsf(skipX) >= 22.0)
 			break;
 	}
 
-	for (int i = 0; i <= len; i += skip) {
+	// Keep the fine grid, but thin labels independently until even the
+	// widest value has enough horizontal room.
+	char widestLabel[64];
+	snprintf(widestLabel, sizeof(widestLabel), "%d", len - 1);
+	float minLabelSpacing = ImGui::CalcTextSize(widestLabel).x + 2.0f;
+	int labelSkip = gridSkip;
+	while ((inner.GetWidth() / len * labelSkip) < minLabelSpacing)
+		labelSkip *= 2;
+
+	for (int i = 0; i <= len; i += gridSkip) {
 		float gridX = rescalef(i, 0, len, inner.Min.x, inner.Max.x);
 		// Grid line
-		int thicknessIndex = i / skip;
+		int thicknessIndex = i / gridSkip;
 		float thickness;
 		if (thicknessIndex % 64 == 0)
 			thickness = 3.0;
@@ -30,7 +39,7 @@ static void drawGrid(ImRect inner, int len) {
 			thickness = 1.0;
 		window->DrawList->AddLine(ImVec2(gridX, inner.Min.y), ImVec2(gridX, inner.Max.y), ImGui::GetColorU32(ImGuiCol_WindowBg), thickness);
 		// Text
-		if (i < len) {
+		if (i < len && i % labelSkip == 0) {
 			char label[64];
 			snprintf(label, sizeof(label), "%d", i);
 			ImVec2 labelPos = ImVec2(gridX, inner.Min.y) + ImVec2(4, -1);

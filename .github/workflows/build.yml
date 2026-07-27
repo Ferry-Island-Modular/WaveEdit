@@ -125,7 +125,7 @@ jobs:
           set -e
           cat appimage-smoke.log
           test "$status" -eq 124
-          grep -F "theme: loaded 8 theme(s)" appimage-smoke.log
+          grep -F "theme: loaded 12 theme(s)" appimage-smoke.log
 
       - name: Build WaveEdit (Windows)
         if: matrix.arch == 'win'
