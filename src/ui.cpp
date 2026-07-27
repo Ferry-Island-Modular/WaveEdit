@@ -371,11 +371,14 @@ void renderMenu() {
 	if (ImGui::BeginMenuBar()) {
 		int logoWidth, logoHeight;
 		getImageSize(logoTexture, &logoWidth, &logoHeight);
-		float menuItemY = ImGui::GetCursorPosY();
-		float logoOffsetY = (ImGui::GetFrameHeight() - logoHeight) / 2.0f;
-		ImGui::SetCursorPosY(menuItemY + (logoOffsetY > 0.0f ? logoOffsetY : 0.0f));
-		ImGui::Image(logoTexture, ImVec2(logoWidth, logoHeight));
-		ImGui::SetCursorPosY(menuItemY);
+		float logoSlotHeight = ImGui::GetFrameHeight();
+		ImVec2 logoSlotMin = ImGui::GetCursorScreenPos();
+		ImGui::Dummy(ImVec2(logoWidth, logoSlotHeight));
+		float logoY = logoSlotMin.y + (logoSlotHeight - logoHeight) / 2.0f;
+		ImGui::GetWindowDrawList()->AddImage(
+			logoTexture,
+			ImVec2(logoSlotMin.x, logoY),
+			ImVec2(logoSlotMin.x + logoWidth, logoY + logoHeight));
 
 		// File
 		if (ImGui::BeginMenu("File")) {
