@@ -29,11 +29,11 @@ static char status[1024] = "";
 static Bank importBank;
 
 const int audioLenMin = 32;
-const int audioLenMax = BANK_LEN * WAVE_LEN * 100;
+const int audioLenMax = BANK_LEN * MAX_WAVE_LEN * 100;
 
 
 static void zoomFit() {
-	zoom = clampf((float)audioLen / (BANK_LEN * WAVE_LEN), 0.01, 100.0);
+	zoom = clampf((float)audioLen / (BANK_LEN * currentBank.waveLength), 0.01, 100.0);
 }
 
 static void clearImport() {
@@ -87,9 +87,10 @@ static void loadImport(const char *path) {
 	free(pathCpy);
 
 	// Render audio preview by resampling to constant size
-	audioPreview = new float[BANK_LEN * WAVE_LEN]();
-	double previewRatio = BANK_LEN * WAVE_LEN / (double)audioLen;
-	resample(audio, audioLen, audioPreview, BANK_LEN * WAVE_LEN, previewRatio);
+	int bankSampleCount = BANK_LEN * currentBank.waveLength;
+	audioPreview = new float[bankSampleCount]();
+	double previewRatio = bankSampleCount / (double)audioLen;
+	resample(audio, audioLen, audioPreview, bankSampleCount, previewRatio);
 }
 
 static float getAudioAmplitude() {
@@ -103,34 +104,36 @@ static float getAudioAmplitude() {
 }
 
 static void computeImport(float *samples) {
+	int waveLength = currentBank.waveLength;
+	int bankSampleCount = BANK_LEN * waveLength;
 	if (!audio) {
 		currentBank.getPostSamples(samples);
 		return;
 	}
 
-	float importSamples[BANK_LEN * WAVE_LEN] = {};
+	std::vector<float> importSamples(bankSampleCount);
 
 	// A bunch of weird constants to align the resampler correctly
 	// Basically x's and w's are indices for the audio array, y's are for the bank array
 	float wl = offset * audioLen;
-	float wr = wl + BANK_LEN * WAVE_LEN * zoom;
+	float wr = wl + bankSampleCount * zoom;
 	float xl = clampf(wl, 0, audioLen);
 	float xr = clampf(wr, 0, audioLen);
-	float yl = rescalef(xl, wl, wr, 0, BANK_LEN * WAVE_LEN);
-	float yr = rescalef(xr, wl, wr, 0, BANK_LEN * WAVE_LEN);
-	yl = clampf(yl, 0, BANK_LEN * WAVE_LEN);
-	yr = clampf(yr, 0, BANK_LEN * WAVE_LEN);
-	yl = clampf(yl, leftTrim * WAVE_LEN, rightTrim * WAVE_LEN);
-	yr = clampf(yr, leftTrim * WAVE_LEN, rightTrim * WAVE_LEN);
-	xl = rescalef(yl, 0, BANK_LEN * WAVE_LEN, wl, wr);
-	xr = rescalef(yr, 0, BANK_LEN * WAVE_LEN, wl, wr);
+	float yl = rescalef(xl, wl, wr, 0, bankSampleCount);
+	float yr = rescalef(xr, wl, wr, 0, bankSampleCount);
+	yl = clampf(yl, 0, bankSampleCount);
+	yr = clampf(yr, 0, bankSampleCount);
+	yl = clampf(yl, leftTrim * waveLength, rightTrim * waveLength);
+	yr = clampf(yr, leftTrim * waveLength, rightTrim * waveLength);
+	xl = rescalef(yl, 0, bankSampleCount, wl, wr);
+	xr = rescalef(yr, 0, bankSampleCount, wl, wr);
 	int xli = roundf(xl);
 	int xri = roundf(xr);
 	int yli = roundf(yl);
 	int yri = roundf(yr);
 	float ratio = clampf(1.0 / zoom, 1/300.0, 300.0);
 
-	resample(audio + xli, xri - xli, importSamples + yli, yri - yli, ratio);
+	resample(audio + xli, xri - xli, importSamples.data() + yli, yri - yli, ratio);
 
 	// Apply mode mixing and gain
 	switch (mode) {
@@ -144,7 +147,7 @@ static void computeImport(float *samples) {
 	}
 
 	float amp = powf(10.0, gain / 20.0);
-	for (int i = 0; i < BANK_LEN * WAVE_LEN; i++) {
+	for (int i = 0; i < bankSampleCount; i++) {
 		importSamples[i] *= amp;
 
 		switch (mode) {
@@ -167,6 +170,12 @@ static void computeImport(float *samples) {
 
 
 void importPage() {
+	if (importBank.waveLength != currentBank.waveLength) {
+		importBank.waveLength = currentBank.waveLength;
+		importBank.clear();
+		clearImport();
+	}
+	int bankSampleCount = BANK_LEN * currentBank.waveLength;
 	ImGui::BeginChild("Import", ImVec2(0, 0), true);
 	{
 		ImGui::PushItemWidth(-1.0);
@@ -187,15 +196,15 @@ void importPage() {
 		// Audio preview
 		ImGui::Text("Imported Audio Preview");
 		if (audioPreview) {
-			float audioPreviewGain[BANK_LEN * WAVE_LEN] = {};
-			for (int i = 0; i < BANK_LEN * WAVE_LEN; i++) {
+			std::vector<float> audioPreviewGain(bankSampleCount);
+			for (int i = 0; i < bankSampleCount; i++) {
 				audioPreviewGain[i] = amp * audioPreview[i];
 			}
-			float previewStart = offset * BANK_LEN * WAVE_LEN;
-			float previewRatio = BANK_LEN * WAVE_LEN / (float)audioLen;
-			float previewEnd = previewStart + BANK_LEN * WAVE_LEN * previewRatio * zoom;
-			float deltaAudio = renderBankWave("audio preview", 200.0, audioPreviewGain,
-				BANK_LEN * WAVE_LEN,
+			float previewStart = offset * bankSampleCount;
+			float previewRatio = bankSampleCount / (float)audioLen;
+			float previewEnd = previewStart + bankSampleCount * previewRatio * zoom;
+			float deltaAudio = renderBankWave("audio preview", 200.0, audioPreviewGain.data(),
+				bankSampleCount,
 				previewStart,
 				previewEnd,
 				BANK_LEN);
@@ -203,24 +212,24 @@ void importPage() {
 		}
 		else {
 			renderBankWave("audio preview", 200.0, NULL,
-				BANK_LEN * WAVE_LEN,
+				bankSampleCount,
 				0,
-				BANK_LEN * WAVE_LEN,
+				bankSampleCount,
 				BANK_LEN);
 		}
 
 		// Bank preview
 		ImGui::Text("Bank Preview");
 		// Initialize from previous bank
-		float bankSamples[BANK_LEN * WAVE_LEN];
-		computeImport(bankSamples);
-		importBank.setSamples(bankSamples);
-		float deltaBank = renderBankWave("bank preview", 200.0, bankSamples,
-			BANK_LEN * WAVE_LEN,
+		std::vector<float> bankSamples(bankSampleCount);
+		computeImport(bankSamples.data());
+		importBank.setSamples(bankSamples.data());
+		float deltaBank = renderBankWave("bank preview", 200.0, bankSamples.data(),
+			bankSampleCount,
 			0,
-			BANK_LEN * WAVE_LEN,
+			bankSampleCount,
 			BANK_LEN);
-		offset -= deltaBank * zoom / audioLen * (BANK_LEN * WAVE_LEN);
+		offset -= deltaBank * zoom / audioLen * bankSampleCount;
 
 		if (audio) {
 			ImGui::Text("Import Settings");

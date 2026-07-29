@@ -8,7 +8,7 @@
 These were previously listed here but have been implemented:
 
 - **FreeType font rendering** — DONE (2026-04-09, `themes-and-fonts` branch). Inter (UI) + JetBrains Mono (numerics) via `IMGUI_ENABLE_FREETYPE`. Lekton fonts deleted.
-- **Runtime theme system with base16 YAML loader** — DONE (2026-04-09, `themes-and-fonts` branch). 8 built-in schemes, drop-in user themes from tinted-theming, Theme menu in menu bar, persistence in ui.dat.
+- **Runtime theme system with base16 YAML loader** — DONE (2026-04-09, expanded 2026-07-27). 12 built-in schemes, drop-in user themes from tinted-theming, Theme menu in menu bar, persistence in ui.dat.
 - **Initial submodule modernization** — DONE (2026-04-09, `m1-modernization` branch). imgui→ocornut v1.92.7, pffft→jpommier, and lodepng bumped; osdialog was deliberately held for the later Zenity sub-project.
 - **Zenity dialog backend for Linux** — DONE (2026-07-26, `linux-zenity-dialogs` branch). Bumped osdialog to current upstream, adopted its shared source, replaced the GTK2 backend with Zenity, and removed the GTK2 build dependency.
 - **AppImage packaging for Linux** — DONE (2026-07-26, `linux-zenity-dialogs` branch). Added a linuxdeploy-based AppImage target, desktop integration metadata, dependency bundling, and a headless CI smoke test.
@@ -106,7 +106,7 @@ From `2026-04-08-fork-research.md`, items not yet pulled in:
 - **OXIWave `playexport.cpp` state isolation.** Prevents UI-controlled morphs from glitching during render-to-WAV export. Generally useful.
 - **OXIWave / SphereEdit `loadWaves()` / `loadMultiWAVs()` / `exportMultiWAVs()`.** Batch WAV import/export workflow in `bank.cpp`. Useful for hardware preset distribution.
 - **OsirisEdit "Bank" → "Wavetable" UI terminology rename.** Cosmetic; clearer for non-E370 users. Decide alongside theme work.
-- ~~**OsirisEdit dark/light theme system.**~~ Superseded by the base16 theme system (implemented 2026-04-09). OsirisEdit's dark/light toggle was the seed inspiration but the final implementation went much further with 8 base16 schemes + drop-in support.
+- ~~**OsirisEdit dark/light theme system.**~~ Superseded by the base16 theme system (implemented 2026-04-09). OsirisEdit's dark/light toggle was the seed inspiration but the final implementation went much further with 12 curated base16 schemes + drop-in support.
 
 None of these are urgent; all can be cherry-picked individually in a dedicated fork-consolidation sub-project.
 

@@ -409,6 +409,22 @@ void renderMenu() {
 			renderWaveMenu();
 			ImGui::EndMenu();
 		}
+		// Bank
+		if (ImGui::BeginMenu("Bank")) {
+			if (ImGui::BeginMenu("Samples per Wave")) {
+				const int waveLengths[] = {256, 512, 1024, 2048};
+				for (int length : waveLengths) {
+					char label[16];
+					snprintf(label, sizeof(label), "%d", length);
+					if (ImGui::MenuItem(label, NULL, currentBank.waveLength == length)) {
+						if (currentBank.setWaveLength(length))
+							historyPush();
+					}
+				}
+				ImGui::EndMenu();
+			}
+			ImGui::EndMenu();
+		}
 		// Audio Output
 		if (ImGui::BeginMenu("Audio Output")) {
 			int deviceCount = audioGetDeviceCount();
@@ -458,6 +474,7 @@ void renderPreview() {
 	ImGui::SameLine();
 	ImGui::PushFont(fontMono);
 	ImGui::SliderFloat("##playFrequency", &playFrequency, 1.0f, 10000.0f, "Frequency: %.2f Hz", ImGuiSliderFlags_Logarithmic);
+	audioSetFrequency(playFrequency);
 	ImGui::PopFont();
 
 	ImGui::Checkbox("Morph Interpolate", &morphInterpolate);
@@ -554,7 +571,9 @@ void editorPage() {
 			if (ImGui::BeginPopup(catalogCategory.name.c_str())) {
 				for (const CatalogFile &catalogFile : catalogCategory.files) {
 					if (ImGui::Selectable(catalogFile.name.c_str())) {
-						memcpy(currentBank.waves[selectedId].samples, catalogFile.samples, sizeof(float) * WAVE_LEN);
+						resample(catalogFile.samples.data(), catalogFile.samples.size(),
+							currentBank.waves[selectedId].samples, wave->length,
+							wave->length / (double)catalogFile.samples.size());
 						currentBank.waves[selectedId].commitSamples();
 						historyPush();
 					}
@@ -568,15 +587,16 @@ void editorPage() {
 
 		ImGui::Text("Waveform");
 		const int oversample = 4;
-		float waveOversample[WAVE_LEN * oversample];
-		cyclicOversample(wave->postSamples, waveOversample, WAVE_LEN, oversample);
-		if (renderWave("WaveEditor", 200.0, wave->samples, WAVE_LEN, waveOversample, WAVE_LEN * oversample, tool)) {
+		static std::vector<float> waveOversample;
+		waveOversample.resize(wave->length * oversample);
+		cyclicOversample(wave->postSamples, waveOversample.data(), wave->length, oversample);
+		if (renderWave("WaveEditor", 200.0, wave->samples, wave->length, waveOversample.data(), wave->length * oversample, tool)) {
 			currentBank.waves[selectedId].commitSamples();
 			historyPush();
 		}
 
 		ImGui::Text("Harmonics");
-		if (renderHistogram("HarmonicEditor", 200.0, wave->harmonics, WAVE_LEN / 2, wave->postHarmonics, WAVE_LEN / 2, tool)) {
+		if (renderHistogram("HarmonicEditor", 200.0, wave->harmonics, wave->length / 2, wave->postHarmonics, wave->length / 2, tool)) {
 			currentBank.waves[selectedId].commitHarmonics();
 			historyPush();
 		}

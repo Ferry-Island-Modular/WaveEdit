@@ -120,7 +120,8 @@ unsigned char *base64_decode(const unsigned char *src, size_t len, size_t *out_l
 // wave.cpp
 ////////////////////
 
-#define WAVE_LEN 256
+#define DEFAULT_WAVE_LEN 256
+#define MAX_WAVE_LEN 2048
 
 enum EffectID {
 	PRE_GAIN,
@@ -141,15 +142,16 @@ enum EffectID {
 extern const char *effectNames[EFFECTS_LEN];
 
 struct Wave {
-	float samples[WAVE_LEN];
+	int length = DEFAULT_WAVE_LEN;
+	float samples[MAX_WAVE_LEN];
 	/** FFT of wave, interleaved complex numbers */
-	float spectrum[WAVE_LEN];
+	float spectrum[MAX_WAVE_LEN];
 	/** Norm of spectrum */
-	float harmonics[WAVE_LEN / 2];
+	float harmonics[MAX_WAVE_LEN / 2];
 	/** Wave after effects have been applied */
-	float postSamples[WAVE_LEN];
-	float postSpectrum[WAVE_LEN];
-	float postHarmonics[WAVE_LEN / 2];
+	float postSamples[MAX_WAVE_LEN];
+	float postSpectrum[MAX_WAVE_LEN];
+	float postHarmonics[MAX_WAVE_LEN / 2];
 
 	float effects[EFFECTS_LEN];
 	bool cycle;
@@ -183,19 +185,21 @@ extern bool clipboardActive;
 #define BANK_GRID_HEIGHT 8
 
 struct Bank {
+	int waveLength = DEFAULT_WAVE_LEN;
 	Wave waves[BANK_LEN];
 
 	void clear();
+	bool setWaveLength(int length);
 	void swap(int i, int j);
 	void shuffle();
-	/** `in` must be length BANK_LEN * WAVE_LEN */
+	/** `in` must be length BANK_LEN * waveLength */
 	void setSamples(const float *in);
 	void getPostSamples(float *out);
 	void duplicateToAll(int waveId);
 	/** Binary dump of the bank struct */
 	void save(const char *filename);
 	void load(const char *filename);
-	/** WAV file with BANK_LEN * WAVE_LEN samples */
+	/** WAV file with BANK_LEN * waveLength samples */
 	void saveWAV(const char *filename);
 	void loadWAV(const char *filename);
 	/** Saves each wave to its own file in a directory */
@@ -221,7 +225,7 @@ extern Bank currentBank;
 ////////////////////
 
 struct CatalogFile {
-	float samples[WAVE_LEN];
+	std::vector<float> samples;
 	std::string name;
 };
 
@@ -256,6 +260,7 @@ extern Bank *playingBank;
 
 int audioGetDeviceCount();
 const char *audioGetDeviceName(int deviceId);
+void audioSetFrequency(float frequency);
 void audioClose();
 void audioOpen(int deviceId);
 void audioInit();

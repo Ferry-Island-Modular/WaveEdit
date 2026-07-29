@@ -2,6 +2,11 @@
 #include <string.h>
 #include <sndfile.h>
 
+// Wave algorithms are expressed in terms of the active per-wave length.
+// Keeping this alias local to this translation unit makes the DSP refactor
+// easy to audit while avoiding a process-wide fixed-width constant.
+#define WAVE_LEN length
+
 
 static Wave clipboardWave = {};
 bool clipboardActive = false;
@@ -24,11 +29,14 @@ const char *effectNames[EFFECTS_LEN] {
 
 
 void Wave::clear() {
+	int activeLength = length;
 	memset(this, 0, sizeof(Wave));
+	length = activeLength;
+	commitSamples();
 }
 
 void Wave::updatePost() {
-	float out[WAVE_LEN];
+	float out[MAX_WAVE_LEN];
 	memcpy(out, samples, sizeof(float) * WAVE_LEN);
 
 	// Pre-gain
@@ -42,7 +50,7 @@ void Wave::updatePost() {
 	// Temporal and Harmonic Shift
 	if (effects[PHASE_SHIFT] > 0.0 || effects[HARMONIC_SHIFT] > 0.0) {
 		// Shift Fourier phase proportionally
-		float tmp[WAVE_LEN];
+		float tmp[MAX_WAVE_LEN];
 		RFFT(out, tmp, WAVE_LEN);
 		for (int k = 0; k < WAVE_LEN / 2; k++) {
 			float phase = clampf(effects[HARMONIC_SHIFT], 0.0, 1.0) + clampf(effects[PHASE_SHIFT], 0.0, 1.0) * k;
@@ -60,7 +68,7 @@ void Wave::updatePost() {
 
 		// Build the kernel in Fourier space
 		// Place taps at positions `comb * j`, with exponentially decreasing amplitude
-		float kernel[WAVE_LEN] = {};
+		float kernel[MAX_WAVE_LEN] = {};
 		for (int k = 0; k < WAVE_LEN / 2; k++) {
 			for (int j = 0; j < taps; j++) {
 				float amplitude = powf(base, j);
@@ -73,7 +81,7 @@ void Wave::updatePost() {
 		}
 
 		// Convolve FFT of input with kernel
-		float fft[WAVE_LEN];
+		float fft[MAX_WAVE_LEN];
 		RFFT(out, fft, WAVE_LEN);
 		for (int k = 0; k < WAVE_LEN / 2; k++) {
 			cmultf(&fft[2 * k], &fft[2 * k + 1], fft[2 * k], fft[2 * k + 1], kernel[2 * k], kernel[2 * k + 1]);
@@ -105,7 +113,7 @@ void Wave::updatePost() {
 	// Sample & Hold
 	if (effects[SAMPLE_AND_HOLD] > 0.0) {
 		float frameskip = powf(WAVE_LEN / 2.0, clampf(effects[SAMPLE_AND_HOLD], 0.0, 1.0));
-		float tmp[WAVE_LEN + 1];
+		float tmp[MAX_WAVE_LEN + 1];
 		memcpy(tmp, out, sizeof(float) * WAVE_LEN);
 		tmp[WAVE_LEN] = tmp[0];
 
@@ -140,7 +148,7 @@ void Wave::updatePost() {
 	// Brick-wall lowpass / highpass filter
 	// TODO Maybe change this into a more musical filter
 	if (effects[LOWPASS] > 0.0 || effects[HIGHPASS]) {
-		float fft[WAVE_LEN];
+		float fft[MAX_WAVE_LEN];
 		RFFT(out, fft, WAVE_LEN);
 		float lowpass = 1.0 - effects[LOWPASS];
 		float highpass = effects[HIGHPASS];
@@ -287,15 +295,20 @@ void Wave::saveWAV(const char *filename) {
 void Wave::loadWAV(const char *filename) {
 	clear();
 
-	SF_INFO info;
-	SNDFILE *sf = sf_open(filename, SFM_READ, &info);
-	if (!sf)
+	int inputLength = 0;
+	float *input = loadAudio(filename, &inputLength);
+	if (!input)
 		return;
 
-	sf_read_float(sf, samples, WAVE_LEN);
+	if (inputLength == WAVE_LEN) {
+		memcpy(samples, input, sizeof(float) * WAVE_LEN);
+	}
+	else if (inputLength > 0) {
+		resample(input, inputLength, samples, WAVE_LEN, WAVE_LEN / (double)inputLength);
+	}
 	commitSamples();
 
-	sf_close(sf);
+	delete[] input;
 }
 
 void Wave::clipboardCopy() {
@@ -305,6 +318,16 @@ void Wave::clipboardCopy() {
 
 void Wave::clipboardPaste() {
 	if (clipboardActive) {
-		memcpy(this, &clipboardWave, sizeof(*this));
+		int targetLength = length;
+		float resized[MAX_WAVE_LEN] = {};
+		resample(clipboardWave.samples, clipboardWave.length, resized, targetLength,
+			targetLength / (double)clipboardWave.length);
+		memcpy(effects, clipboardWave.effects, sizeof(effects));
+		cycle = clipboardWave.cycle;
+		normalize = clipboardWave.normalize;
+		memcpy(samples, resized, sizeof(float) * targetLength);
+		commitSamples();
 	}
 }
+
+#undef WAVE_LEN

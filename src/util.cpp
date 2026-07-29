@@ -34,16 +34,18 @@ float *loadAudio(const char *filename, int *length) {
 
 	// Get length of audio
 	int len = sf_seek(sf, 0, SEEK_END);
-	if (len <= 0)
+	if (len <= 0) {
+		sf_close(sf);
 		return NULL;
+	}
 	sf_seek(sf, 0, SEEK_SET);
 	float *samples = new float[len];
 
 	int pos = 0;
+	const int bufferLen = 1<<12;
+	std::vector<float> buffer(bufferLen * info.channels);
 	while (pos < len) {
-		const int bufferLen = 1<<12;
-		float buffer[bufferLen * info.channels];
-		int frames = sf_readf_float(sf, buffer, bufferLen);
+		int frames = sf_readf_float(sf, buffer.data(), bufferLen);
 		for (int i = 0; i < frames; i++) {
 			float sample = 0.0;
 			for (int c = 0; c < info.channels; c++) {

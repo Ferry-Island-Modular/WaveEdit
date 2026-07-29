@@ -8,19 +8,28 @@
 
 static void drawGrid(ImRect inner, int len) {
 	ImGuiWindow *window = ImGui::GetCurrentWindow();
-	// Compute number of points to skip, should be a power of 2
-	int skip;
+	// Compute grid spacing as a power of 2.
+	int gridSkip = 1;
 	for (int j = 0; j < 20; j++) {
-		skip = 1 << j;
-		float skipX = (inner.Max.x - inner.Min.x) / len * skip;
+		gridSkip = 1 << j;
+		float skipX = (inner.Max.x - inner.Min.x) / len * gridSkip;
 		if (fabsf(skipX) >= 22.0)
 			break;
 	}
 
-	for (int i = 0; i <= len; i += skip) {
+	// Keep the fine grid, but thin labels independently until even the
+	// widest value has enough horizontal room.
+	char widestLabel[64];
+	snprintf(widestLabel, sizeof(widestLabel), "%d", len - 1);
+	float minLabelSpacing = ImGui::CalcTextSize(widestLabel).x + 2.0f;
+	int labelSkip = gridSkip;
+	while ((inner.GetWidth() / len * labelSkip) < minLabelSpacing)
+		labelSkip *= 2;
+
+	for (int i = 0; i <= len; i += gridSkip) {
 		float gridX = rescalef(i, 0, len, inner.Min.x, inner.Max.x);
 		// Grid line
-		int thicknessIndex = i / skip;
+		int thicknessIndex = i / gridSkip;
 		float thickness;
 		if (thicknessIndex % 64 == 0)
 			thickness = 3.0;
@@ -30,7 +39,7 @@ static void drawGrid(ImRect inner, int len) {
 			thickness = 1.0;
 		window->DrawList->AddLine(ImVec2(gridX, inner.Min.y), ImVec2(gridX, inner.Max.y), ImGui::GetColorU32(ImGuiCol_WindowBg), thickness);
 		// Text
-		if (i < len) {
+		if (i < len && i % labelSkip == 0) {
 			char label[64];
 			snprintf(label, sizeof(label), "%d", i);
 			ImVec2 labelPos = ImVec2(gridX, inner.Min.y) + ImVec2(4, -1);
@@ -322,10 +331,12 @@ void renderBankGrid(const char *name, float height, int gridWidth, float *gridX,
 		// Draw lines
 		ImGui::PushClipRect(cellBox.Min, cellBox.Max, true);
 		ImVec2 lastPos;
-		for (int i = 0; i < WAVE_LEN; i++) {
+		int waveLength = currentBank.waveLength;
+		int sampleStep = maxi(1, waveLength / maxi(1, (int)cellBox.GetWidth()));
+		for (int i = 0; i < waveLength; i += sampleStep) {
 			float value = currentBank.waves[j].postSamples[i];
 			float margin = 3.0;
-			ImVec2 pos = ImVec2(rescalef(i, 0, WAVE_LEN - 1, cellBox.Min.x, cellBox.Max.x), rescalef(value, 1.0, -1.0, cellBox.Min.y + margin, cellBox.Max.y - margin));
+			ImVec2 pos = ImVec2(rescalef(i, 0, waveLength - 1, cellBox.Min.x, cellBox.Max.x), rescalef(value, 1.0, -1.0, cellBox.Min.y + margin, cellBox.Max.y - margin));
 			if (i > 0)
 				window->DrawList->AddLine(lastPos, pos, ImGui::GetColorU32(ImGuiCol_PlotLines));
 			lastPos = pos;
@@ -508,35 +519,34 @@ void renderWaterfall(const char *name, float height, float amplitude, float angl
 	}
 
 	ImVec2 waveOffset = ImVec2(5, -5);
+	std::vector<ImVec2> points(currentBank.waveLength);
 
 	// Pre-effect plots
 	for (int b = 0; b < BANK_LEN; b++) {
-		ImVec2 points[WAVE_LEN];
-		for (int i = 0; i < WAVE_LEN; i++) {
+		for (int i = 0; i < currentBank.waveLength; i++) {
 			float value = currentBank.waves[b].samples[i];
-			ImVec2 a = ImVec2(rescalef(i, 0, WAVE_LEN-1, -1.0, 1.0), rescalef(b, 0, BANK_LEN-1, -1.0, 1.0));
+			ImVec2 a = ImVec2(rescalef(i, 0, currentBank.waveLength-1, -1.0, 1.0), rescalef(b, 0, BANK_LEN-1, -1.0, 1.0));
 			a = ImRotate(a, cosf(theta), sinf(theta)) / M_SQRT2;
 			a.y += -amplitude * 0.3 * value;
 			ImVec2 point = ImVec2(rescalef(a.x, -1.0, 1.0, box.Min.x, box.Max.x), rescalef(a.y, 1.0, -1.0, box.Min.y, box.Max.y));
 			points[i] = point;
 		}
 		float thickness = 1.0;
-		window->DrawList->AddPolyline(points, WAVE_LEN, ImGui::GetColorU32(ImGuiCol_FrameBg), ImDrawFlags_None, thickness);
+		window->DrawList->AddPolyline(points.data(), points.size(), ImGui::GetColorU32(ImGuiCol_FrameBg), ImDrawFlags_None, thickness);
 	}
 
 	// Post-effect plots
 	for (int b = 0; b < BANK_LEN; b++) {
-		ImVec2 points[WAVE_LEN];
-		for (int i = 0; i < WAVE_LEN; i++) {
+		for (int i = 0; i < currentBank.waveLength; i++) {
 			float value = currentBank.waves[b].postSamples[i];
-			ImVec2 a = ImVec2(rescalef(i, 0, WAVE_LEN-1, -1.0, 1.0), rescalef(b, 0, BANK_LEN-1, -1.0, 1.0));
+			ImVec2 a = ImVec2(rescalef(i, 0, currentBank.waveLength-1, -1.0, 1.0), rescalef(b, 0, BANK_LEN-1, -1.0, 1.0));
 			a = ImRotate(a, cosf(theta), sinf(theta)) / M_SQRT2;
 			a.y += -amplitude * 0.3 * value;
 			ImVec2 point = ImVec2(rescalef(a.x, -1.0, 1.0, box.Min.x, box.Max.x), rescalef(a.y, 1.0, -1.0, box.Min.y, box.Max.y));
 			points[i] = point;
 		}
 		float thickness = 1.0 + 4.0 * fmaxf(1.0 - fabsf(b - *activeZ), 0.0);
-		window->DrawList->AddPolyline(points, WAVE_LEN, ImGui::GetColorU32(ImGuiCol_PlotHistogram), ImDrawFlags_None, thickness);
+		window->DrawList->AddPolyline(points.data(), points.size(), ImGui::GetColorU32(ImGuiCol_PlotHistogram), ImDrawFlags_None, thickness);
 	}
 
 	ImGui::PopClipRect();
@@ -612,4 +622,3 @@ float renderBankWave(const char *name, float height, const float *lines, int lin
 	}
 	return delta;
 }
-

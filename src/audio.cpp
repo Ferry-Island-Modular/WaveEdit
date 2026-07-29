@@ -1,6 +1,7 @@
 #include "WaveEdit.hpp"
 #include <SDL.h>
 #include <samplerate.h>
+#include <atomic>
 
 
 float playVolume = -12.0;
@@ -19,18 +20,20 @@ Bank *playingBank;
 static float morphXSmooth = morphX;
 static float morphYSmooth = morphY;
 static float morphZSmooth = morphZ;
+static std::atomic<float> playFrequencyTarget(playFrequency);
 static SDL_AudioDeviceID audioDevice = 0;
 static SDL_AudioSpec audioSpec;
 static SRC_STATE *audioSrc = NULL;
 
 long srcCallback(void *cb_data, float **data) {
 	float gain = powf(10.0, playVolume / 20.0);
+	int waveLength = playingBank->waveLength;
 	// Generate next samples
 	const int inLen = 64;
 	static float in[inLen];
 	for (int i = 0; i < inLen; i++) {
 		if (morphInterpolate) {
-			const float lambdaMorph = fminf(0.1 / playFrequency, 0.5);
+			const float lambdaMorph = fminf(0.1 / playFrequencySmooth, 0.5);
 			morphXSmooth = crossf(morphXSmooth, clampf(morphX, 0.0, BANK_GRID_WIDTH - 1), lambdaMorph);
 			morphYSmooth = crossf(morphYSmooth, clampf(morphY, 0.0, BANK_GRID_HEIGHT - 1), lambdaMorph);
 			morphZSmooth = crossf(morphZSmooth, clampf(morphZ, 0.0, BANK_LEN - 1), lambdaMorph);
@@ -42,7 +45,7 @@ long srcCallback(void *cb_data, float **data) {
 			morphZSmooth = roundf(morphZ);
 		}
 
-		int index = (playIndex + i) % WAVE_LEN;
+		int index = (playIndex + i) % waveLength;
 		if (playModeXY) {
 			// Morph XY
 			int xi = morphXSmooth;
@@ -73,7 +76,7 @@ long srcCallback(void *cb_data, float **data) {
 	}
 
 	playIndex += inLen;
-	playIndex %= WAVE_LEN;
+	playIndex %= waveLength;
 
 	*data = in;
 	return inLen;
@@ -87,9 +90,9 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
 	if (playEnabled) {
 		// Apply exponential smoothing to frequency
 		const float lambdaFrequency = 0.5;
-		playFrequency = clampf(playFrequency, 1.0, 10000.0);
-		playFrequencySmooth = powf(playFrequencySmooth, 1.0 - lambdaFrequency) * powf(playFrequency, lambdaFrequency);
-		double ratio = (double)audioSpec.freq / WAVE_LEN / playFrequencySmooth;
+		float targetFrequency = playFrequencyTarget.load(std::memory_order_relaxed);
+		playFrequencySmooth = powf(playFrequencySmooth, 1.0 - lambdaFrequency) * powf(targetFrequency, lambdaFrequency);
+		double ratio = (double)audioSpec.freq / playingBank->waveLength / playFrequencySmooth;
 
 		src_callback_read(audioSrc, ratio, outLen, out);
 
@@ -113,6 +116,10 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
 
 int audioGetDeviceCount() {
 	return SDL_GetNumAudioDevices(0);
+}
+
+void audioSetFrequency(float frequency) {
+	playFrequencyTarget.store(clampf(frequency, 1.0f, 10000.0f), std::memory_order_relaxed);
 }
 
 const char *audioGetDeviceName(int deviceId) {
