@@ -98,6 +98,14 @@ jobs:
         run: |
           make dist
 
+      - name: Verify macOS bundle is self-contained
+        if: matrix.arch == 'mac_arm64'
+        run: |
+          executable=dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
+          ! otool -L "$executable" | grep -E '/(opt/homebrew|usr/local)/'
+          otool -L "$executable" | grep -F '@executable_path/libSDL2-2.0.0.dylib'
+          codesign --verify --deep --strict --verbose=2 dist/WaveEdit/WaveEdit.app
+
       - name: Download verified linuxdeploy (Linux)
         if: matrix.arch == 'lin'
         run: |
