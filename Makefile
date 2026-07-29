@@ -1,9 +1,10 @@
-VERSION = 1.3.0-beta.1
+VERSION = 1.3.0-beta.2
 
 LINUXDEPLOY ?= linuxdeploy-x86_64.AppImage
 APPIMAGE_DIR = dist/WaveEdit.AppDir
 APPIMAGE_OUTPUT = dist/WaveEdit-$(VERSION)-x86_64.AppImage
 SDL2_LIB = $(shell pkg-config --variable=libdir sdl2)/libSDL2-2.0.0.dylib
+SDL2_INSTALL_NAME = $(shell otool -D $(SDL2_LIB) | tail -n 1)
 
 FLAGS = -Wall -Wextra -Wno-unused-parameter -g -Wno-unused -O3 -ffast-math \
 	-DVERSION=$(VERSION) -DPFFFT_SIMD_DISABLE \
@@ -148,7 +149,7 @@ else ifneq (,$(filter $(ARCH),mac mac_arm64))
 	# Remap dylibs in executable
 	otool -L dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
 		cp $(SDL2_LIB) dist/WaveEdit/WaveEdit.app/Contents/MacOS
-		install_name_tool -change $(SDL2_LIB) @executable_path/libSDL2-2.0.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
+		install_name_tool -change $(SDL2_INSTALL_NAME) @executable_path/libSDL2-2.0.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
 	cp $(shell brew --prefix libsamplerate)/lib/libsamplerate.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
 	install_name_tool -change $(shell brew --prefix libsamplerate)/lib/libsamplerate.0.dylib @executable_path/libsamplerate.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
 	cp $(shell brew --prefix libsndfile)/lib/libsndfile.1.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
