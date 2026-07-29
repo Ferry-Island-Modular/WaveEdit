@@ -187,12 +187,39 @@ jobs:
         with:
           path: artifacts
 
+      - name: Stage release assets and checksums
+        shell: bash
+        run: |
+          mkdir release-assets
+          mapfile -t release_assets < <(
+            find artifacts -type f \
+              \( -name 'WaveEdit-*.zip' -o -name 'WaveEdit-*.AppImage' \) \
+              -print
+          )
+          test "${#release_assets[@]}" -eq 4
+          cp "${release_assets[@]}" release-assets/
+          (
+            cd release-assets
+            sha256sum WaveEdit-* > SHA256SUMS
+          )
+
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          release_args=(
+            --draft
+            --generate-notes
+            --title "${{ github.ref_name }}"
+            --verify-tag
+          )
+          if [[ "${{ github.ref_name }}" == *-* ]]; then
+            release_args+=(
+              --prerelease
+              --latest=false
+              --notes-file doc/beta-release-notes.md
+            )
+          fi
           gh release create "${{ github.ref_name }}" \
-            --draft \
-            --generate-notes \
-            --title "${{ github.ref_name }}" \
-            artifacts/*/WaveEdit-*.zip
+            "${release_args[@]}" \
+            release-assets/*
