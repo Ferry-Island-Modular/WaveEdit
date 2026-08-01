@@ -124,6 +124,16 @@ test-wave-width: $(WAVE_WIDTH_TEST_OBJECTS)
 	$(CXX) -o $(WAVE_WIDTH_TEST) $^ $(TEST_LDFLAGS)
 	./$(WAVE_WIDTH_TEST)
 
+UI_SCALE_TEST = build/tests/ui_scale
+UI_SCALE_TEST_OBJECTS = \
+	build/tests/ui_scale.cpp.o \
+	build/src/uiscale.cpp.o
+
+.PHONY: test-ui-scale
+test-ui-scale: $(UI_SCALE_TEST_OBJECTS)
+	$(CXX) -o $(UI_SCALE_TEST) $^
+	./$(UI_SCALE_TEST)
+
 clean:
 	rm -frv $(OBJECTS) WaveEdit dist
 

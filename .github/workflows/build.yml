@@ -79,6 +79,11 @@ jobs:
         run: |
           make test-wave-width
 
+      - name: Test UI scale resolution (Linux + macOS)
+        if: matrix.arch != 'win'
+        run: |
+          make test-ui-scale
+
       - name: Verify Linux binary has no GTK dependency
         if: matrix.arch == 'lin'
         run: |
@@ -135,6 +140,18 @@ jobs:
           test "$status" -eq 124
           grep -F "theme: loaded 12 theme(s)" appimage-smoke.log
 
+      - name: Smoke-test AppImage at 2x UI scale (Linux)
+        if: matrix.arch == 'lin'
+        run: |
+          set +e
+          timeout 5s env APPIMAGE_EXTRACT_AND_RUN=1 SDL_AUDIODRIVER=dummy WAVEEDIT_UI_SCALE=2 \
+            xvfb-run -a dist/WaveEdit-*-x86_64.AppImage > appimage-smoke-2x.log 2>&1
+          status=$?
+          set -e
+          cat appimage-smoke-2x.log
+          test "$status" -eq 124
+          grep -F "ui: scale 2.00 (WAVEEDIT_UI_SCALE)" appimage-smoke-2x.log
+
       - name: Build WaveEdit (Windows)
         if: matrix.arch == 'win'
         shell: msys2 {0}
@@ -153,6 +170,12 @@ jobs:
         shell: msys2 {0}
         run: |
           make ARCH=win test-wave-width
+
+      - name: Test UI scale resolution (Windows)
+        if: matrix.arch == 'win'
+        shell: msys2 {0}
+        run: |
+          make ARCH=win test-ui-scale
 
       - name: Populate dep/bin with system DLLs (Windows)
         if: matrix.arch == 'win'

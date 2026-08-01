@@ -306,6 +306,9 @@ void renderWaveMenu();
 void uiInit();
 void uiDestroy();
 void uiRender();
+/** Feeds the windowing system's content scale into the UI scale resolution
+(see src/uiscale.hpp). Call before uiInit(); 0 means "unknown". */
+void uiSetSystemScale(float scale);
 
 // Selections span the range between these indices
 extern int selectedId;
