@@ -1,6 +1,6 @@
 # Future Improvements Roadmap
 
-**Last updated:** 2026-07-27
+**Last updated:** 2026-07-31
 **Purpose:** Running index of sub-projects and improvements that have been **identified but explicitly deferred** during planning of other work. Each item here is a potential future brainstorm session — not a commitment.
 
 ## Completed sub-projects (for reference)
@@ -56,9 +56,13 @@ The submodule upgrade migrates `ext/imgui` from a 2017-era snapshot to current u
 4. **MSVC build for Windows.** Cleaner Windows ABI, no MinGW runtime DLLs to ship, plays nicer with Windows codesigning. Requires either CMake or a `.sln` rewrite plus vcpkg for deps. Real risk of a long "fix the GCC-isms" debugging tail.
 5. **Broader smoke tests in CI.** Linux now launches the AppImage under Xvfb with dummy audio and verifies that bundled resources load. Interaction-level coverage—opening dialogs, editing waves, exercising audio, and clean shutdown—still needs a test harness. Separate "make WaveEdit testable" sub-project.
 
+### SDL
+
+6. **Native SDL3 migration.** Homebrew's `sdl2` now resolves to the sdl2-compat shim, which implements the SDL2 ABI by dlopening SDL3 at runtime. Since v1.3.0-beta.3 the macOS bundle therefore ships two SDL layers (`libSDL2-2.0.0.dylib` + `libSDL3.dylib`; see `packaging/macos/bundle_dylibs.sh`). Porting the app to SDL3 proper (imgui ships an `imgui_impl_sdl3` backend) would drop the shim, ship a single maintained SDL, and remove the compat special case from packaging. Identified while fixing the beta.2 macOS bundle (2026-07-31).
+
 ### Supply chain
 
-6. **Vendor the submodules or switch to upstream-only.** Post-upgrade, `ext/imgui`, `ext/lodepng`, `ext/pffft` all point at third-party upstreams (one of which is on Bitbucket). Supply chain hardening options: vendor each into the main repo and drop the submodule machinery entirely, or maintain mirror forks under the same account as the WaveEdit fork itself. Decision point: how much do we value the "clean `git clone` just works with no submodule fetch" experience vs the "we're tracking upstream" experience.
+7. **Vendor the submodules or switch to upstream-only.** Post-upgrade, `ext/imgui`, `ext/lodepng`, `ext/pffft` all point at third-party upstreams (one of which is on Bitbucket). Supply chain hardening options: vendor each into the main repo and drop the submodule machinery entirely, or maintain mirror forks under the same account as the WaveEdit fork itself. Decision point: how much do we value the "clean `git clone` just works with no submodule fetch" experience vs the "we're tracking upstream" experience.
 
 ---
 
