@@ -201,20 +201,58 @@ jobs:
         run: |
           make ARCH=win test-ui-scale
 
-      - name: Populate dep/bin with system DLLs (Windows)
-        if: matrix.arch == 'win'
-        shell: msys2 {0}
-        run: |
-          mkdir -p dep/bin
-          cp /mingw64/bin/SDL2.dll dep/bin/
-          cp /mingw64/bin/libsamplerate-0.dll dep/bin/
-          cp /mingw64/bin/libsndfile-1.dll dep/bin/
-
       - name: Build dist zip (Windows)
         if: matrix.arch == 'win'
         shell: msys2 {0}
         run: |
           make dist
+
+      # A DLL import counts as "must bundle" exactly when /mingw64/bin
+      # provides it -- system DLLs resolve elsewhere and are skipped. This
+      # checks every PE file in the bundle, so transitive dependencies of
+      # bundled DLLs are covered too.
+      - name: Verify Windows bundle is self-contained
+        if: matrix.arch == 'win'
+        shell: msys2 {0}
+        run: |
+          cd dist/WaveEdit
+          status=0
+          for f in *.exe *.dll; do
+            for dep in $(objdump -p "$f" | awk '/DLL Name/{print $3}'); do
+              if [ -f "/mingw64/bin/$dep" ] && [ ! -f "$dep" ]; then
+                echo "ERROR: $f imports $dep (mingw64) but it is not bundled"
+                status=1
+              fi
+            done
+          done
+          exit $status
+
+      # Simulate a machine without MSYS2: strip /mingw64/bin from PATH and
+      # launch the packaged exe. v1.3.0-beta.3 died here with
+      # "libbrotlidec.dll was not found".
+      - name: Smoke-test Windows bundle without MinGW on PATH
+        if: matrix.arch == 'win'
+        shell: pwsh
+        run: |
+          $env:PATH = "C:\Windows\System32;C:\Windows"
+          $p = Start-Process -FilePath "dist\WaveEdit\WaveEdit.exe" `
+            -WorkingDirectory "dist\WaveEdit" -PassThru `
+            -RedirectStandardError "win-smoke.log"
+          $deadline = (Get-Date).AddSeconds(60)
+          while ((Get-Date) -lt $deadline) {
+            Start-Sleep -Seconds 3
+            if (Select-String -Path win-smoke.log -Pattern "theme: loaded" -Quiet) { break }
+            if ($p.HasExited) { break }
+          }
+          if ($p.HasExited) {
+            Get-Content win-smoke.log
+            throw "WaveEdit exited early with code $($p.ExitCode)"
+          }
+          Stop-Process -Id $p.Id -Force
+          Get-Content win-smoke.log
+          if (-not (Select-String -Path win-smoke.log -Pattern "theme: loaded 12 theme")) {
+            throw "theme load line missing from stderr log"
+          }
 
       - name: Upload dist artifact
         uses: actions/upload-artifact@v4
