@@ -164,13 +164,13 @@ else ifneq (,$(filter $(ARCH),mac mac_arm64))
 else ifeq ($(ARCH),win)
 	cp -R logo*.png fonts catalog themes dist/WaveEdit
 	cp WaveEdit.exe dist/WaveEdit
-	cp /mingw64/bin/libgcc_s_seh-1.dll dist/WaveEdit
-	cp /mingw64/bin/libwinpthread-1.dll dist/WaveEdit
-	cp /mingw64/bin/libstdc++-6.dll dist/WaveEdit
-	cp dep/bin/SDL2.dll dist/WaveEdit
-	cp dep/bin/libsamplerate-0.dll dist/WaveEdit
-	cp dep/bin/libsndfile-1.dll dist/WaveEdit
-	cp /mingw64/bin/libfreetype-6.dll dist/WaveEdit
+	# Copy the full closure of mingw64 DLLs. ldd resolves recursively, so
+	# transitive dependencies (freetype -> brotli/harfbuzz, libsndfile ->
+	# codec DLLs, ...) are included. System DLLs resolve outside /mingw64
+	# and are skipped. A hardcoded DLL list shipped v1.3.0-beta.3 without
+	# freetype's and libsndfile's dependency trees.
+	ldd WaveEdit.exe | grep -io '/mingw64/bin/[^ ]*\.dll' | sort -u \
+		| xargs -I{} cp {} dist/WaveEdit
 endif
 	cd dist && zip -9 -r WaveEdit-$(VERSION)-$(ARCH).zip WaveEdit
 
