@@ -106,13 +106,16 @@ jobs:
           otool -L "$executable" | grep -F '@executable_path/libSDL2-2.0.0.dylib'
           codesign --verify --deep --strict --verbose=2 dist/WaveEdit/WaveEdit.app
 
+      # Pin a dated linuxdeploy release, not the rolling "continuous" tag:
+      # continuous is rebuilt upstream at will, which silently invalidates a
+      # pinned checksum (it broke CI on 2026-08-01).
       - name: Download verified linuxdeploy (Linux)
         if: matrix.arch == 'lin'
         run: |
           wget -q \
-            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage \
             -O linuxdeploy-x86_64.AppImage
-          echo "e87ee0815d109282fdda73e34c2361d64d02b0ffaea3674b18f1fd1f6a687dcf  linuxdeploy-x86_64.AppImage" \
+          echo "c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d  linuxdeploy-x86_64.AppImage" \
             | sha256sum -c -
           chmod +x linuxdeploy-x86_64.AppImage
 
