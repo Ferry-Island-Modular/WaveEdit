@@ -1,10 +1,9 @@
-VERSION = 1.3.0-beta.2
+VERSION = 1.3.0-beta.3
 
 LINUXDEPLOY ?= linuxdeploy-x86_64.AppImage
 APPIMAGE_DIR = dist/WaveEdit.AppDir
 APPIMAGE_OUTPUT = dist/WaveEdit-$(VERSION)-x86_64.AppImage
 SDL2_LIB = $(shell pkg-config --variable=libdir sdl2)/libSDL2-2.0.0.dylib
-SDL2_INSTALL_NAME = $(shell otool -D $(SDL2_LIB) | tail -n 1)
 
 FLAGS = -Wall -Wextra -Wno-unused-parameter -g -Wno-unused -O3 -ffast-math \
 	-DVERSION=$(VERSION) -DPFFFT_SIMD_DISABLE \
@@ -124,6 +123,16 @@ test-wave-width: $(WAVE_WIDTH_TEST_OBJECTS)
 	$(CXX) -o $(WAVE_WIDTH_TEST) $^ $(TEST_LDFLAGS)
 	./$(WAVE_WIDTH_TEST)
 
+UI_SCALE_TEST = build/tests/ui_scale
+UI_SCALE_TEST_OBJECTS = \
+	build/tests/ui_scale.cpp.o \
+	build/src/uiscale.cpp.o
+
+.PHONY: test-ui-scale
+test-ui-scale: $(UI_SCALE_TEST_OBJECTS)
+	$(CXX) -o $(UI_SCALE_TEST) $^
+	./$(UI_SCALE_TEST)
+
 clean:
 	rm -frv $(OBJECTS) WaveEdit dist
 
@@ -146,17 +155,12 @@ else ifneq (,$(filter $(ARCH),mac mac_arm64))
 	cp Info.plist dist/WaveEdit/WaveEdit.app/Contents
 	cp WaveEdit dist/WaveEdit/WaveEdit.app/Contents/MacOS
 	cp -R logo*.png logo.icns fonts catalog themes dist/WaveEdit/WaveEdit.app/Contents/Resources
-	# Remap dylibs in executable
+	# Bundle the full closure of non-system dylibs (not just direct deps:
+	# Homebrew's libsndfile and libfreetype pull in further Homebrew dylibs,
+	# and sdl2-compat needs libSDL3 at runtime).
+	./packaging/macos/bundle_dylibs.sh dist/WaveEdit/WaveEdit.app
 	otool -L dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
-		cp $(SDL2_LIB) dist/WaveEdit/WaveEdit.app/Contents/MacOS
-		install_name_tool -change $(SDL2_INSTALL_NAME) @executable_path/libSDL2-2.0.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
-	cp $(shell brew --prefix libsamplerate)/lib/libsamplerate.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
-	install_name_tool -change $(shell brew --prefix libsamplerate)/lib/libsamplerate.0.dylib @executable_path/libsamplerate.0.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
-	cp $(shell brew --prefix libsndfile)/lib/libsndfile.1.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
-	install_name_tool -change $(shell brew --prefix libsndfile)/lib/libsndfile.1.dylib @executable_path/libsndfile.1.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
-	cp $(shell brew --prefix freetype)/lib/libfreetype.6.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS
-	install_name_tool -change $(shell brew --prefix freetype)/lib/libfreetype.6.dylib @executable_path/libfreetype.6.dylib dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
-	otool -L dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
+	./packaging/macos/verify_bundle.sh dist/WaveEdit/WaveEdit.app
 	# Re-sign the app bundle after install_name_tool modified the binary.
 	# Without this, macOS reports "damaged and can't be opened" because
 	# install_name_tool invalidates the ad-hoc signature that clang created.

@@ -79,6 +79,11 @@ jobs:
         run: |
           make test-wave-width
 
+      - name: Test UI scale resolution (Linux + macOS)
+        if: matrix.arch != 'win'
+        run: |
+          make test-ui-scale
+
       - name: Verify Linux binary has no GTK dependency
         if: matrix.arch == 'lin'
         run: |
@@ -101,10 +106,31 @@ jobs:
       - name: Verify macOS bundle is self-contained
         if: matrix.arch == 'mac_arm64'
         run: |
-          executable=dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit
-          ! otool -L "$executable" | grep -E '/(opt/homebrew|usr/local)/'
-          otool -L "$executable" | grep -F '@executable_path/libSDL2-2.0.0.dylib'
+          ./packaging/macos/verify_bundle.sh dist/WaveEdit/WaveEdit.app
           codesign --verify --deep --strict --verbose=2 dist/WaveEdit/WaveEdit.app
+
+      # Simulate a machine without Homebrew: beta.1 and beta.2 both shipped
+      # bundles that only worked when /opt/homebrew supplied missing libraries.
+      - name: Smoke-test macOS bundle without Homebrew
+        if: matrix.arch == 'mac_arm64'
+        run: |
+          sudo mv /opt/homebrew /opt/homebrew.hidden
+          trap 'sudo mv /opt/homebrew.hidden /opt/homebrew' EXIT
+          for lib in dist/WaveEdit/WaveEdit.app/Contents/MacOS/*.dylib; do
+            /usr/bin/python3 -c "import ctypes, sys; ctypes.CDLL(sys.argv[1])" "$lib"
+            echo "dlopen OK: $(basename "$lib")"
+          done
+          SDL_AUDIODRIVER=dummy dist/WaveEdit/WaveEdit.app/Contents/MacOS/WaveEdit \
+            > mac-smoke.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 20); do
+            sleep 3
+            grep -q 'theme: loaded' mac-smoke.log && break
+            kill -0 "$pid" 2> /dev/null || break
+          done
+          kill "$pid" 2> /dev/null || true
+          cat mac-smoke.log
+          grep -F "theme: loaded 12 theme(s)" mac-smoke.log
 
       # Pin a dated linuxdeploy release, not the rolling "continuous" tag:
       # continuous is rebuilt upstream at will, which silently invalidates a
@@ -138,6 +164,18 @@ jobs:
           test "$status" -eq 124
           grep -F "theme: loaded 12 theme(s)" appimage-smoke.log
 
+      - name: Smoke-test AppImage at 2x UI scale (Linux)
+        if: matrix.arch == 'lin'
+        run: |
+          set +e
+          timeout 5s env APPIMAGE_EXTRACT_AND_RUN=1 SDL_AUDIODRIVER=dummy WAVEEDIT_UI_SCALE=2 \
+            xvfb-run -a dist/WaveEdit-*-x86_64.AppImage > appimage-smoke-2x.log 2>&1
+          status=$?
+          set -e
+          cat appimage-smoke-2x.log
+          test "$status" -eq 124
+          grep -F "ui: scale 2.00 (WAVEEDIT_UI_SCALE)" appimage-smoke-2x.log
+
       - name: Build WaveEdit (Windows)
         if: matrix.arch == 'win'
         shell: msys2 {0}
@@ -156,6 +194,12 @@ jobs:
         shell: msys2 {0}
         run: |
           make ARCH=win test-wave-width
+
+      - name: Test UI scale resolution (Windows)
+        if: matrix.arch == 'win'
+        shell: msys2 {0}
+        run: |
+          make ARCH=win test-ui-scale
 
       - name: Build dist zip (Windows)
         if: matrix.arch == 'win'

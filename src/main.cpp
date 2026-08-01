@@ -91,6 +91,14 @@ int main(int argc, char **argv) {
 	ImGui_ImplSDL2_InitForOpenGL(window, glContext);
 	ImGui_ImplOpenGL2_Init();
 
+#ifdef ARCH_LIN
+	// Feed the X11 content scale (Xft.dpi based) into the UI scale resolution.
+	// macOS handles HiDPI through the Retina framebuffer scale, and on Windows
+	// the process is not DPI-aware (the OS stretches the window), so scaling
+	// by the reported DPI there would apply twice.
+	uiSetSystemScale(ImGui_ImplSDL2_GetContentScaleForWindow(window));
+#endif
+
 	// Initialize modules
 	uiInit();
 	historyClear();
