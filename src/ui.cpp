@@ -16,6 +16,7 @@
 #include "imgui_internal.h"
 
 #include "theme.hpp"
+#include "uiscale.hpp"
 
 #include "osdialog/osdialog.h"
 
@@ -27,6 +28,34 @@ static ImTextureID logoTextureDark;
 static ImTextureID logoTexture;
 char lastFilename[1024] = "";
 static int currentThemeId = -1;
+
+static float uiScaleSystem = 0.0f;   // content scale from the windowing system (0 = unknown)
+static float uiScaleOverride = 0.0f; // manual menu selection (0 = Auto), persisted in ui.dat
+static float uiScaleCurrent = 1.0f;
+
+void uiSetSystemScale(float scale) {
+	uiScaleSystem = scale;
+}
+
+// Re-resolve the UI scale and rebuild the style: fresh default style → theme
+// colors/rounding → ScaleAllSizes → dynamic font scale. Starting from a
+// default-constructed ImGuiStyle keeps repeated calls from compounding
+// ScaleAllSizes.
+static void applyThemeAndScale() {
+	const char *source = NULL;
+	uiScaleCurrent = uiScaleResolve(uiScaleOverride,
+		getenv("WAVEEDIT_UI_SCALE"), getenv("GDK_SCALE"), getenv("GDK_DPI_SCALE"),
+		uiScaleSystem, &source);
+
+	ImGuiStyle &style = ImGui::GetStyle();
+	style = ImGuiStyle();
+	bool isDark = true;
+	themeApply(currentThemeId, &isDark);
+	style.ScaleAllSizes(uiScaleCurrent);
+	style.FontScaleMain = uiScaleCurrent;
+	logoTexture = isDark ? logoTextureLight : logoTextureDark;
+	fprintf(stderr, "ui: scale %.2f (%s)\n", uiScaleCurrent, source);
+}
 ImFont* fontMono = NULL;
 int selectedId = 0;
 int lastSelectedId = 0;
@@ -441,11 +470,26 @@ void renderMenu() {
 				bool selected = (currentThemeId == i);
 				if (ImGui::MenuItem(themeName(i), NULL, selected)) {
 					currentThemeId = i;
-					bool isDark = true;
-					themeApply(currentThemeId, &isDark);
-					logoTexture = isDark ? logoTextureLight : logoTextureDark;
+					applyThemeAndScale();
 				}
 				ImGui::PopID();
+			}
+			ImGui::EndMenu();
+		}
+		// UI Scale
+		if (ImGui::BeginMenu("UI Scale")) {
+			if (ImGui::MenuItem("Auto", NULL, uiScaleOverride <= 0.0f)) {
+				uiScaleOverride = 0.0f;
+				applyThemeAndScale();
+			}
+			const float scales[] = {1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 2.5f, 3.0f};
+			for (float scale : scales) {
+				char label[16];
+				snprintf(label, sizeof(label), "%g%%", scale * 100.0f);
+				if (ImGui::MenuItem(label, NULL, uiScaleOverride == scale)) {
+					uiScaleOverride = scale;
+					applyThemeAndScale();
+				}
 			}
 			ImGui::EndMenu();
 		}
@@ -865,13 +909,15 @@ void uiInit() {
 	// Discover and load themes from disk.
 	themeInit("themes");
 
-	// Read the persisted theme name from ui.dat (versioned format).
-	// File layout (v2):
-	//   uint32_t version = 2
+	// Read persisted UI settings from ui.dat (versioned format).
+	// File layout (v3):
+	//   uint32_t version = 3
 	//   uint8_t  nameLen
 	//   char     name[nameLen]
-	// File missing, empty, or in the old 4-byte int-only format → fall back
-	// to "Tokyo Night Dark" by name; if that's not available, fall back to id 0.
+	//   float    uiScaleOverride   (0 = Auto; added in v3)
+	// v2 files are the same without the trailing float. File missing, empty,
+	// or in the old 4-byte int-only format → fall back to "Tokyo Night Dark"
+	// by name; if that's not available, fall back to id 0.
 	char savedName[64] = "Tokyo Night Dark";
 	{
 		FILE *f = fopen("ui.dat", "rb");
@@ -881,11 +927,18 @@ void uiInit() {
 			fseek(f, 0, SEEK_SET);
 			if (size >= 5) {
 				uint32_t version;
-				if (fread(&version, sizeof(version), 1, f) == 1 && version == 2) {
+				if (fread(&version, sizeof(version), 1, f) == 1
+					&& (version == 2 || version == 3)) {
 					uint8_t nameLen;
 					if (fread(&nameLen, 1, 1, f) == 1 && nameLen < sizeof(savedName)) {
 						if (fread(savedName, 1, nameLen, f) == nameLen) {
 							savedName[nameLen] = '\0';
+							float savedScale;
+							if (version == 3
+								&& fread(&savedScale, sizeof(savedScale), 1, f) == 1
+								&& savedScale > 0.0f) {
+								uiScaleOverride = savedScale;
+							}
 						}
 					}
 				}
@@ -898,11 +951,7 @@ void uiInit() {
 	if (currentThemeId < 0) currentThemeId = themeByName("Tokyo Night Dark");
 	if (currentThemeId < 0) currentThemeId = 0;
 
-	// Default to true so that if themeApply() ever no-ops (e.g., out-of-range
-	// id), isDark has a sensible value and the logo logic doesn't read UB.
-	bool isDark = true;
-	themeApply(currentThemeId, &isDark);
-	logoTexture = isDark ? logoTextureLight : logoTextureDark;
+	applyThemeAndScale();
 }
 
 
@@ -911,7 +960,7 @@ void uiDestroy() {
 	{
 		FILE *f = fopen("ui.dat", "wb");
 		if (f) {
-			uint32_t version = 2;
+			uint32_t version = 3;
 			const char *name = themeName(currentThemeId);
 			size_t nameLen = strlen(name);
 			if (nameLen > 255) nameLen = 255;  // fits in uint8_t
@@ -919,6 +968,7 @@ void uiDestroy() {
 			fwrite(&version, sizeof(version), 1, f);
 			fwrite(&nameLenByte, 1, 1, f);
 			fwrite(name, 1, nameLen, f);
+			fwrite(&uiScaleOverride, sizeof(uiScaleOverride), 1, f);
 			fclose(f);
 		}
 	}
