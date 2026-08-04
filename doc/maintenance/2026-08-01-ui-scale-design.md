@@ -65,8 +65,7 @@ scope for this slice and can be polished when spotted.
 - **Font-atlas rebuild on change** (pre-1.92 pattern): unnecessary with
   `FontScaleMain`.
 - **Auto-detect on macOS/Windows too:** macOS needs none; Windows needs the
-  SDL DPI-awareness hints first, deferred to its own sub-project. (To be
-  added to future-improvements.md after the beta.3 packaging branch — which
-  edits the same region of that file — has merged.)
+  SDL DPI-awareness hints first, deferred to its own sub-project (see
+  "HiDPI follow-ups" in future-improvements.md).
 - **Per-monitor / runtime rescale on monitor change:** deferred; startup +
   manual override covers the reported problem.
