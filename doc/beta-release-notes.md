@@ -27,6 +27,9 @@ chmod +x WaveEdit-*-x86_64.AppImage
 4. Reorder page tabs and confirm that every tab remains selectable.
 5. Change themes, restart WaveEdit, and confirm the selection is retained.
 6. Import and export WAV files.
+7. On a HiDPI display, check that the interface is a comfortable size; the
+   **UI Scale** menu (next to Theme) can adjust it live, and "Auto" should
+   match your desktop's scaling on Linux.
 
 When reporting a problem, include your operating system and version, computer
 architecture, WaveEdit version, reproduction steps, and the affected WAV file
