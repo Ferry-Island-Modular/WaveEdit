@@ -1,6 +1,6 @@
 # Future Improvements Roadmap
 
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-04
 **Purpose:** Running index of sub-projects and improvements that have been **identified but explicitly deferred** during planning of other work. Each item here is a potential future brainstorm session — not a commitment.
 
 ## Completed sub-projects (for reference)
@@ -13,6 +13,8 @@ These were previously listed here but have been implemented:
 - **Zenity dialog backend for Linux** — DONE (2026-07-26, `linux-zenity-dialogs` branch). Bumped osdialog to current upstream, adopted its shared source, replaced the GTK2 backend with Zenity, and removed the GTK2 build dependency.
 - **AppImage packaging for Linux** — DONE (2026-07-26, `linux-zenity-dialogs` branch). Added a linuxdeploy-based AppImage target, desktop integration metadata, dependency bundling, and a headless CI smoke test.
 - **Native ImGui page tabs** — DONE (2026-07-27, `native-imgui-tabs` branch). Replaced the custom `tablabels.hpp` widget with a reorderable native tab bar that uses current theme styling and scrolls instead of crushing labels in narrow windows.
+- **Self-contained macOS and Windows bundles** — DONE (2026-08-01, `beta3-macos-self-contained` + `win-dll-closure` branches, v1.3.0-beta.3). Both platforms now bundle the full transitive dependency closure (`packaging/macos/bundle_dylibs.sh`; `ldd` walk in the win dist target), with CI closure verification and clean-machine launch smoke tests (Homebrew hidden / MinGW off PATH). Root causes: sdl2-compat dlopens SDL3 invisibly to `otool -L`, and Homebrew/MSYS2 libsndfile+freetype pull in codec/compression trees.
+- **HiDPI UI scaling** — DONE (2026-08-01, `ui-scale` branch, v1.3.0-beta.3). Global scale factor via imgui v1.92 `FontScaleMain` + `ScaleAllSizes`, resolved from manual override (ui.dat v3) > `WAVEEDIT_UI_SCALE` > `GDK_SCALE`×`GDK_DPI_SCALE` > X11 content scale; runtime UI Scale menu, unit-tested resolver (`src/uiscale.cpp`), 2x CI smoke test. Follow-ups below.
 
 Items are grouped by theme, not by priority. Priorities will be decided at the time a given sub-project is started.
 
@@ -44,6 +46,12 @@ The submodule upgrade migrates `ext/imgui` from a 2017-era snapshot to current u
 9. **ImPlot integration.** ImPlot (`epezent/implot`) is a third-party plotting library built on imgui. Gives: labeled axes with units, zoomable/pannable plots, multi-series overlays, heatmaps (useful for spectrum), surface plots (useful for waterfall), legends. WaveEdit's custom `renderWave`/`renderHistogram`/`renderWaterfall` could be replaced or augmented by ImPlot for a dramatic visual upgrade. New submodule dependency. This is the big one.
 10. **Proper Fourier / spectrogram view.** WaveEdit has FFT infrastructure (`pffft`, `wave.cpp` spectral code) but the visualization is basic. Modern DSP expectations include a proper spectrogram heatmap, harmonic decomposition view, and per-harmonic editing. Builds on #9.
 
+### HiDPI follow-ups (deferred from the ui-scale sub-project, 2026-08-01)
+
+11. **Windows DPI awareness.** The process is not DPI-aware, so Windows bitmap-stretches the window on HiDPI displays (right size, slightly blurry). Fix: opt in via SDL hints (`SDL_HINT_WINDOWS_DPI_AWARENESS` / `SDL_HINT_WINDOWS_DPI_SCALING`, SDL ≥ 2.24), then feed the reported content scale into `uiSetSystemScale()` like Linux does. Must not double-scale — the OS stretch goes away once the process declares awareness.
+12. **Native Wayland content scale.** SDL2 reports content scale 1.0 on native Wayland, so Auto detection relies on XWayland's X11 DPI or the `GDK_SCALE` env vars. SDL3 fixes this properly (another point for the SDL3 migration, Build item 6); until then the manual UI Scale menu is the fallback.
+13. **Per-monitor / runtime rescale.** Scale is resolved once at startup (plus manual changes). Dragging the window between monitors with different scales doesn't rescale automatically; would need `SDL_WINDOWEVENT_DISPLAY_CHANGED` handling.
+
 ---
 
 ## Build / release / distribution
@@ -63,6 +71,14 @@ The submodule upgrade migrates `ext/imgui` from a 2017-era snapshot to current u
 ### Supply chain
 
 7. **Vendor the submodules or switch to upstream-only.** Post-upgrade, `ext/imgui`, `ext/lodepng`, `ext/pffft` all point at third-party upstreams (one of which is on Bitbucket). Supply chain hardening options: vendor each into the main repo and drop the submodule machinery entirely, or maintain mirror forks under the same account as the WaveEdit fork itself. Decision point: how much do we value the "clean `git clone` just works with no submodule fetch" experience vs the "we're tracking upstream" experience.
+
+### Installers and distribution polish (identified 2026-08-04)
+
+8. **Windows NSIS installer.** Port `harbor-installer.nsi` from the fim-config-tool repo (NSIS 3.x via choco in CI): per-user install to `%LocalAppData%\Programs`, MUI2 wizard, Start Menu shortcut, uninstaller + registry uninstall key, version metadata; keep publishing the portable zip alongside. The staging input is exactly the `dist/WaveEdit` folder, so the DLL-closure work feeds straight in. Needs a `.ico` (generate from the logo PNGs or commit one). Consider `MultiUser.nsh` dual-mode (per-user vs elevated all-users) from the start — Harbor's per-user-only installer fails silently when pointed at Program Files. Unsigned → SmartScreen warnings remain until item 2.
+9. **macOS DMG.** Drag-to-Applications disk image via `hdiutil` (background image + `/Applications` symlink) instead of the bare zip. Purely cosmetic until code-signing/notarization (item 2) is decided — Gatekeeper's control-click dance is identical for both containers.
+10. **AppImage self-update metadata.** Embed zsync update info (linuxdeploy `LDAI_UPDATE_INFORMATION`, pointing at the GitHub releases zsync URL) so AppImageUpdate can delta-update. One env var in the appimage target.
+11. **Retire or fix `lin.zip`.** The Linux folder zip bundles `libsndfile.so.1` from the build distro without its transitive codec libraries (FLAC, vorbis, opus, mpg123 …) — the same closure bug class fixed on macOS and Windows for beta.3, still latent here. Either give it the closure treatment or drop the folder zip and ship AppImage-only.
+12. **Flatpak / Flathub.** Best long-term Linux distribution story (discoverability, sandboxing, updates), but a real sub-project: manifest, runtime pinning, screenshots, store review process.
 
 ---
 
